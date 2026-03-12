@@ -27,6 +27,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 .run-tmp
+.tmp-cache/
+.tmp-config/
+.tmp-state/
 
 # IntelliJ based IDEs
 .idea
