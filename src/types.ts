@@ -5,6 +5,7 @@ export interface ProfileConfig {
   command: string;
   cwd?: string;
   env?: EnvMap;
+  description?: string;
 }
 
 export interface RunConfigFile {
@@ -12,6 +13,7 @@ export interface RunConfigFile {
   command?: string;
   cwd?: string;
   env?: EnvMap;
+  defaultProfile?: string;
   profiles?: Record<string, Partial<ProfileConfig>>;
 }
 
@@ -22,6 +24,7 @@ export interface ResolvedProfile {
   env: Record<string, string>;
   sourcePath: string;
   configDir: string;
+  description?: string;
 }
 
 export interface GlobalConfig {
@@ -72,4 +75,39 @@ export interface CacheFile {
       suggestions: DetectionSuggestion[];
     }
   >;
+}
+
+export type ManagedProcessStatus = "running" | "stopped" | "exited";
+
+export interface ManagedProcessRecord {
+  id: string;
+  name: string;
+  projectName: string;
+  projectRoot: string;
+  configPath: string;
+  profile: string;
+  command: string;
+  cwd: string;
+  pid: number;
+  shell: string;
+  env: Record<string, string>;
+  status: ManagedProcessStatus;
+  logPath: string;
+  startedAt: string;
+  stoppedAt?: string;
+  updatedAt: string;
+  restartCount: number;
+  lastExitCode?: number;
+  lastSignal?: NodeJS.Signals;
+}
+
+export interface ManagedProcessRegistryFile {
+  version: number;
+  processes: ManagedProcessRecord[];
+}
+
+export interface ManagedProcessSnapshot extends ManagedProcessRecord {
+  uptimeMs: number;
+  memoryRssKb: number | null;
+  ports: number[];
 }

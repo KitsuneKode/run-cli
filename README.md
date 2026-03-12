@@ -8,6 +8,8 @@ Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means r
 
 - `run` starts the default project command
 - `run dev` starts the `dev` profile
+- `run up` starts a managed background process
+- `run ps` and `run dashboard` show what is running across projects
 - `run init` writes a local config from detected project signals
 - `run doctor` shows exactly what the CLI resolved and why
 
@@ -61,6 +63,9 @@ Or create the config directly:
 
 ```toml
 version = 1
+default_profile = "default"
+
+[profiles.default]
 command = "bun run index.ts"
 
 [profiles.dev]
@@ -71,7 +76,17 @@ command = "bun --hot index.ts"
 
 ```text
 run [profile] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
-run init [--force] [--yes] [--command <cmd>] [--profile <name=command>]
+run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--profile <name=command>]
+run profiles
+run up [profile] [--name <name>]
+run ps [--json]
+run dashboard
+run inspect <name|id> [--json]
+run logs <name|id> [--lines <n>] [--follow]
+run stop <name|id>
+run restart <name|id>
+run kill <name|id>
+run ports [--json]
 run config <view|path|edit> [--global]
 run doctor
 run help
@@ -91,6 +106,7 @@ Create config without prompts:
 ```bash
 run init --yes
 run init --yes --command "python exp.py"
+run init --yes --default-profile dev --profile dev="bun run dev"
 run init --yes --profile dev="python -m uvicorn app:app --reload"
 ```
 
@@ -110,6 +126,18 @@ run config edit
 run config path --global
 ```
 
+Manage long-running processes:
+
+```bash
+run up
+run up dev
+run ps
+run inspect my-app:dev
+run logs my-app:dev --follow
+run stop my-app:dev
+run dashboard
+```
+
 ## Config lookup
 
 `run` walks upward from the current directory until it finds the nearest `.run.config.toml`.
@@ -122,12 +150,17 @@ That means:
 
 Only the nearest project config is used in v1. Ancestor configs are not merged.
 
+Plain `run` resolves the effective default profile for the project.
+
 ## Examples
 
 ### Bun / TypeScript
 
 ```toml
 version = 1
+default_profile = "dev"
+
+[profiles.default]
 command = "bun run src/index.ts"
 
 [profiles.dev]
@@ -138,6 +171,8 @@ command = "bun --hot src/index.ts"
 
 ```toml
 version = 1
+
+[profiles.default]
 command = "node index.js"
 ```
 
@@ -145,6 +180,8 @@ command = "node index.js"
 
 ```toml
 version = 1
+
+[profiles.default]
 command = "python exp.py"
 
 [profiles.dev]
@@ -164,8 +201,25 @@ It suggests those commands, but still lets the user override them before writing
 
 ```toml
 version = 1
+
+[profiles.default]
 command = "go run ."
 ```
+
+## Managed processes
+
+`run up` stores a lightweight registry for managed processes and exposes:
+
+- project name
+- profile
+- pid
+- uptime
+- memory usage
+- listening ports
+- logs
+- cwd and config path
+
+This stays intentionally local and lightweight: `run` only manages processes that it starts itself.
 
 ## Global config
 

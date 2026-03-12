@@ -71,6 +71,16 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
     version,
   };
 
+  const defaultProfileValue = parsed.default_profile;
+
+  if (defaultProfileValue !== undefined) {
+    if (typeof defaultProfileValue !== "string" || defaultProfileValue.trim() === "") {
+      throw new Error(`${sourcePath} default_profile must be a non-empty string.`);
+    }
+
+    config.defaultProfile = defaultProfileValue;
+  }
+
   if (parsed.command !== undefined) {
     if (typeof parsed.command !== "string" || parsed.command.trim() === "") {
       throw new Error(`${sourcePath} command must be a non-empty string.`);
@@ -109,6 +119,7 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         command?: string;
         cwd?: string;
         env?: EnvMap;
+        description?: string;
       } = {};
 
       if (profileValue.command !== undefined) {
@@ -129,8 +140,31 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         profile.cwd = profileValue.cwd;
       }
 
+      if (profileValue.description !== undefined) {
+        if (
+          typeof profileValue.description !== "string" ||
+          profileValue.description.trim() === ""
+        ) {
+          throw new Error(
+            `${sourcePath} profiles.${profileName}.description must be a non-empty string.`,
+          );
+        }
+
+        profile.description = profileValue.description;
+      }
+
       profile.env = assertEnvMap(profileValue.env, `profiles.${profileName}.env`);
       config.profiles[profileName] = profile;
+    }
+  }
+
+  if (config.defaultProfile) {
+    if (config.defaultProfile === "default" && config.command) {
+      // allow legacy command-only default
+    } else if (!config.profiles?.[config.defaultProfile]) {
+      throw new Error(
+        `${sourcePath} default_profile "${config.defaultProfile}" must exist in profiles.`,
+      );
     }
   }
 
@@ -255,16 +289,25 @@ export function resolveProfile(
   overrideCwd?: string,
 ): ResolvedProfile {
   const { config, configDir, sourcePath } = resolvedConfig;
-  const selectedName = profileName ?? "default";
+  const selectedName =
+    profileName ?? config.defaultProfile ?? (config.profiles?.default ? "default" : "default");
   const profileDefaults = {
     command: config.command,
     cwd: config.cwd,
     env: config.env ?? {},
+    description: undefined,
   };
-  const profileOverride = profileName ? config.profiles?.[profileName] : undefined;
+  const profileOverride =
+    selectedName === "default" && !profileName && !config.profiles?.default
+      ? undefined
+      : config.profiles?.[selectedName];
 
-  if (profileName && !profileOverride) {
-    throw new Error(`Profile "${profileName}" is not defined in ${sourcePath}.`);
+  if (
+    (profileName || config.defaultProfile) &&
+    !profileOverride &&
+    !(selectedName === "default" && config.command)
+  ) {
+    throw new Error(`Profile "${selectedName}" is not defined in ${sourcePath}.`);
   }
 
   const command = profileOverride?.command ?? profileDefaults.command;
@@ -286,11 +329,16 @@ export function resolveProfile(
     env: Object.fromEntries(Object.entries(mergedEnv).map(([key, value]) => [key, String(value)])),
     sourcePath,
     configDir,
+    description: profileOverride?.description,
   };
 }
 
 export function renderProjectConfig(config: RunConfigFile): string {
   const lines: string[] = [`version = ${PROJECT_CONFIG_VERSION}`];
+
+  if (config.defaultProfile) {
+    lines.push(`default_profile = ${toTomlString(config.defaultProfile)}`);
+  }
 
   if (config.command) {
     lines.push(`command = ${toTomlString(config.command)}`);
@@ -322,6 +370,10 @@ export function renderProjectConfig(config: RunConfigFile): string {
         lines.push(`cwd = ${toTomlString(profile.cwd)}`);
       }
 
+      if (profile.description) {
+        lines.push(`description = ${toTomlString(profile.description)}`);
+      }
+
       if (profile.env && Object.keys(profile.env).length > 0) {
         lines.push(`[profiles.${profileName}.env]`);
 
@@ -333,6 +385,58 @@ export function renderProjectConfig(config: RunConfigFile): string {
   }
 
   return `${lines.join("\n")}\n`;
+}
+
+export function listProfiles(config: RunConfigFile): Array<{
+  name: string;
+  command: string;
+  description?: string;
+  isDefault: boolean;
+}> {
+  const profiles = new Map<
+    string,
+    {
+      name: string;
+      command: string;
+      description?: string;
+      isDefault: boolean;
+    }
+  >();
+
+  if (config.command) {
+    profiles.set("default", {
+      name: "default",
+      command: config.command,
+      isDefault: !config.defaultProfile || config.defaultProfile === "default",
+    });
+  }
+
+  for (const [name, profile] of Object.entries(config.profiles ?? {})) {
+    const command = profile.command ?? (name === "default" ? config.command : undefined);
+
+    if (!command) {
+      continue;
+    }
+
+    profiles.set(name, {
+      name,
+      command,
+      description: profile.description,
+      isDefault: config.defaultProfile ? config.defaultProfile === name : name === "default",
+    });
+  }
+
+  return [...profiles.values()].sort((left, right) => {
+    if (left.isDefault && !right.isDefault) {
+      return -1;
+    }
+
+    if (!left.isDefault && right.isDefault) {
+      return 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
 }
 
 export function renderGlobalConfig(config: Partial<GlobalConfig>): string {

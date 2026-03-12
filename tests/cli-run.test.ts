@@ -14,7 +14,7 @@ describe("direct cli run()", () => {
 
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("run init");
-    expect(result.exitCode).toBeUndefined();
+    expect(result.exitCode).toBe(0);
   });
 
   test("prints config path and dry-runs through the exported entrypoint", async () => {

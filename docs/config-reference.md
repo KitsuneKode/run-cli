@@ -14,12 +14,16 @@ version = 1
 
 ```toml
 version = 1
+default_profile = "default"
 command = "bun run src/index.ts"
 cwd = "."
 
 [env]
 NODE_ENV = "production"
 PORT = 3000
+
+[profiles.default]
+command = "bun run src/index.ts"
 ```
 
 Fields:
@@ -28,15 +32,21 @@ Fields:
 - `command`: default command used by `run`
 - `cwd`: optional path relative to the config file directory
 - `env`: optional table of string, number, or boolean values
+- `default_profile`: optional profile name used by plain `run`
 
 ### Named profiles
 
 ```toml
 version = 1
+default_profile = "dev"
+
+[profiles.default]
 command = "bun run src/index.ts"
+description = "stable default entrypoint"
 
 [profiles.dev]
 command = "bun --hot src/index.ts"
+description = "local development server"
 
 [profiles.worker]
 command = "bun run src/worker.ts"
@@ -49,6 +59,8 @@ DEBUG = true
 
 Rules:
 
+- plain `run` executes `default_profile` when set
+- if `default_profile` is omitted, `profiles.default` or legacy top-level `command` is used
 - invoke profiles as `run <name>`
 - top-level `cwd` and `env` act as defaults for profiles
 - profile names cannot be `init`, `config`, `doctor`, or `help`
@@ -99,5 +111,19 @@ Non-interactive examples:
 ```bash
 run init --yes
 run init --yes --command "python exp.py"
+run init --yes --default-profile dev --profile dev="bun run dev"
 run init --yes --profile dev="go run ."
 ```
+
+## Managed process commands
+
+Managed processes are started with `run up` and inspected with:
+
+- `run ps`
+- `run inspect <name|id>`
+- `run logs <name|id>`
+- `run stop <name|id>`
+- `run restart <name|id>`
+- `run kill <name|id>`
+- `run ports`
+- `run dashboard`

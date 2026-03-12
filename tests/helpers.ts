@@ -37,13 +37,12 @@ export async function withEnv<T>(
 
 export async function captureConsole(
   callback: () => Promise<void>,
-): Promise<{ stdout: string; stderr: string; exitCode: number | undefined }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const stdoutMessages: string[] = [];
   const stderrMessages: string[] = [];
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalError = console.error;
-  const previousExitCode = process.exitCode;
 
   console.log = (...args: unknown[]) => {
     stdoutMessages.push(args.map(String).join(" "));
@@ -54,11 +53,11 @@ export async function captureConsole(
   console.error = (...args: unknown[]) => {
     stderrMessages.push(args.map(String).join(" "));
   };
-  process.exitCode = undefined;
+  process.exitCode = 0;
 
   try {
     await callback();
-    const exitCode = process.exitCode;
+    const exitCode = process.exitCode ?? 0;
     return {
       stdout: stdoutMessages.join("\n"),
       stderr: stderrMessages.join("\n"),
@@ -68,7 +67,6 @@ export async function captureConsole(
     console.log = originalLog;
     console.warn = originalWarn;
     console.error = originalError;
-
-    process.exitCode = previousExitCode;
+    process.exitCode = 0;
   }
 }

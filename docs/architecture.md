@@ -10,6 +10,9 @@
 - `src/cache.ts`: lightweight JSON cache for config and detection metadata
 - `src/exec.ts`: shell-based process execution with signal forwarding
 - `src/init.ts`: interactive and non-interactive config creation
+- `src/process-registry.ts`: XDG-backed managed process registry
+- `src/process-manager.ts`: background process lifecycle operations
+- `src/process-metrics.ts`: on-demand pid, memory, and port inspection
 - `src/doctor.ts`: diagnostics rendering
 
 The runtime deliberately avoids a heavy CLI framework. Argument parsing is small enough to keep in-repo and keeps startup overhead predictable.
@@ -25,6 +28,8 @@ Normal `run` execution follows this order:
 5. If config does not exist, detect the project root, rank runnable suggestions, and point the user to `run init`.
 
 Only the nearest project config is active. Ancestor project configs are not merged in v1.
+
+Foreground execution remains the fast path. Managed-process features are only loaded when commands such as `run up`, `run ps`, `run inspect`, `run logs`, `run stop`, `run restart`, `run kill`, `run ports`, and `run dashboard` are used.
 
 ## Detection heuristics
 
@@ -67,3 +72,23 @@ Commands execute through the selected POSIX shell:
 - then `/bin/sh`
 
 Execution uses inherited stdio, forwards common termination signals, and returns the child exit code unchanged. `--dry-run` prints the resolved command and exits without spawning.
+
+## Managed processes
+
+Managed processes are intentionally local and lightweight:
+
+- only processes started by `run up` are tracked
+- metadata is stored in XDG state paths
+- memory and port details are sampled on demand instead of continuously
+- display names default to project name plus profile
+
+The registry stores enough information to support:
+
+- `run ps`
+- `run inspect`
+- `run logs`
+- `run stop`
+- `run restart`
+- `run kill`
+- `run ports`
+- `run dashboard`

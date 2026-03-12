@@ -14,6 +14,7 @@ export interface InitOptions {
   force: boolean;
   yes: boolean;
   command?: string;
+  defaultProfile?: string;
   profiles: Array<{ name: string; command: string }>;
   cacheStore: CacheStore;
 }
@@ -71,6 +72,7 @@ export async function runInit(options: InitOptions): Promise<{
   const detectedSuggestions = detected?.suggestions ?? [];
   const detectedDefault = suggestionForDefault(detectedSuggestions);
   let command = options.command ?? detectedDefault?.command;
+  let defaultProfile = options.defaultProfile ?? "default";
   const extraProfiles = [...options.profiles];
 
   if (!options.yes && process.stdout.isTTY && process.stdin.isTTY) {
@@ -103,9 +105,16 @@ export async function runInit(options: InitOptions): Promise<{
           selectedIndex >= 1 &&
           selectedIndex <= detectedSuggestions.length
         ) {
-          command = detectedSuggestions[selectedIndex - 1]?.command;
+          const selectedSuggestion = detectedSuggestions[selectedIndex - 1];
+          command = selectedSuggestion?.command;
+          if (selectedSuggestion?.kind === "profile") {
+            defaultProfile = selectedSuggestion.name;
+          } else {
+            defaultProfile = "default";
+          }
         } else {
           command = trimmedSelection;
+          defaultProfile = "default";
         }
       }
     } else {
@@ -113,6 +122,7 @@ export async function runInit(options: InitOptions): Promise<{
 
       if (resolvedCommand.trim() !== "") {
         command = resolvedCommand.trim();
+        defaultProfile = "default";
       }
     }
 
@@ -169,20 +179,51 @@ export async function runInit(options: InitOptions): Promise<{
     );
   }
 
+  if (
+    defaultProfile !== "default" &&
+    !extraProfiles.some((profile) => profile.name === defaultProfile)
+  ) {
+    const matchingSuggestion = detectedSuggestions.find(
+      (suggestion) => suggestion.kind === "profile" && suggestion.name === defaultProfile,
+    );
+
+    if (matchingSuggestion) {
+      extraProfiles.push({
+        name: matchingSuggestion.name,
+        command: matchingSuggestion.command,
+      });
+    } else {
+      throw new Error(
+        `Default profile "${defaultProfile}" must be provided as a named profile command.`,
+      );
+    }
+  }
+
   const config: RunConfigFile = {
     version: 1,
-    command,
+    defaultProfile,
+    profiles: {
+      default: {
+        command,
+      },
+    },
   };
 
-  if (extraProfiles.length > 0) {
-    config.profiles = Object.fromEntries(
-      extraProfiles.map((profile) => [
-        profile.name,
-        {
-          command: profile.command,
-        },
-      ]),
-    );
+  for (const profile of extraProfiles) {
+    if (profile.name === "default") {
+      config.profiles.default = {
+        command: profile.command,
+      };
+      continue;
+    }
+
+    config.profiles[profile.name] = {
+      command: profile.command,
+    };
+  }
+
+  if (defaultProfile === "default" && config.profiles.default?.command) {
+    config.command = config.profiles.default.command;
   }
 
   await writeTextFile(configPath, renderProjectConfig(config));
