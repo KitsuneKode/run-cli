@@ -41,6 +41,12 @@ That exposes:
 
 `runx` is the fallback alias if `run` ever collides with something in your shell.
 
+If you update the CLI locally and want to refresh the global link cleanly:
+
+```bash
+bun run relink:global
+```
+
 ## Quickstart
 
 Inside a project:

@@ -12,6 +12,7 @@ Optional global linking during development:
 
 ```bash
 bun run link:global
+bun run relink:global
 ```
 
 ## Repo workflow

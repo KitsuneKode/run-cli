@@ -6,10 +6,10 @@
   "private": true,
   "module": "src/cli.ts",
   "bin": {
-    "run": "src/cli.ts",
-    "runx": "src/cli.ts"
+    "run": "bin/run.ts",
+    "runx": "bin/run.ts"
   },
-  "files": ["src", "docs", "README.md"],
+  "files": ["bin", "src", "docs", "README.md"],
   "engines": {
     "bun": ">=1.3.9"
   },
@@ -22,6 +22,7 @@
     "format": "biome format --write . && markdownlint-cli2 --fix README.md docs/**/*.md",
     "check": "bun run lint && bun test",
     "link:global": "bun link",
+    "relink:global": "bun run scripts/relink-global.ts",
     "prepare": "husky"
   },
   "devDependencies": {
