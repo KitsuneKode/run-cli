@@ -1,0 +1,46 @@
+import { CONFIG_FILE_NAME } from "./constants.ts";
+import { FALLBACK_SHELL } from "./constants.ts";
+import { getCacheFilePath, getGlobalConfigPath } from "./env-paths.ts";
+import type { DetectedProject, GlobalConfig, ResolvedConfig } from "./types.ts";
+
+export function renderDoctorReport(input: {
+  cwd: string;
+  globalConfig: GlobalConfig;
+  projectConfig: ResolvedConfig | null;
+  detectedProject: DetectedProject | null;
+}): string {
+  const lines = [
+    `cwd: ${input.cwd}`,
+    `config lookup: ${
+      input.projectConfig
+        ? `${input.projectConfig.sourcePath}${input.projectConfig.cacheHit ? " (cache hit)" : ""}`
+        : `not found (${CONFIG_FILE_NAME})`
+    }`,
+    `global config: ${getGlobalConfigPath()}`,
+    `cache file: ${getCacheFilePath()}`,
+    `shell: ${input.globalConfig.shell ?? process.env.SHELL ?? FALLBACK_SHELL}`,
+    `cache enabled: ${String(input.globalConfig.cache)}`,
+  ];
+
+  if (input.detectedProject) {
+    lines.push(
+      `detected root: ${input.detectedProject.root}${
+        input.detectedProject.cacheHit ? " (cache hit)" : ""
+      }`,
+    );
+    lines.push(`detected markers: ${input.detectedProject.markers.join(", ")}`);
+
+    if (input.detectedProject.suggestions.length > 0) {
+      lines.push("suggestions:");
+
+      for (const suggestion of input.detectedProject.suggestions) {
+        const prefix = suggestion.kind === "profile" ? `${suggestion.name}: ` : "";
+        lines.push(
+          `  - ${prefix}${suggestion.command} (${suggestion.reason}; ecosystem=${suggestion.ecosystem}; confidence=${suggestion.confidence})`,
+        );
+      }
+    }
+  }
+
+  return `${lines.join("\n")}\n`;
+}

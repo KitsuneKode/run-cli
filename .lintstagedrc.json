@@ -1,0 +1,4 @@
+{
+  "*.{ts,js,json}": ["biome check --write --no-errors-on-unmatched"],
+  "*.md": ["markdownlint-cli2 --fix"]
+}
