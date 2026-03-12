@@ -1,5 +1,3 @@
-#!/usr/bin/env bun
-
 import { spawn } from "node:child_process";
 import path from "node:path";
 
@@ -21,8 +19,8 @@ import { runInit } from "./init.ts";
 import { cyan, dim, green, info, red, warn } from "./output.ts";
 import type { GlobalConfig } from "./types.ts";
 
-async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
+export async function run(argv = process.argv.slice(2)): Promise<void> {
+  const parsed = parseArgs(argv);
   const cacheStore = new CacheStore();
   const cwd = path.resolve(parsed.cwd ?? process.cwd());
   const globalConfig = await readGlobalConfig();
@@ -309,5 +307,3 @@ Notes:
   - ${cyan("run init")} lets you choose a detected command or type your own.
   - Without config, run suggests commands and points you to ${cyan("run init")}.`);
 }
-
-await main();

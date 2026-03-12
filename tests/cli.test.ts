@@ -13,7 +13,7 @@ async function createTempProject(prefix: string): Promise<string> {
 }
 
 async function runCli(args: string[], cwd: string, extraEnv: Record<string, string> = {}) {
-  const command = Bun.spawn(["bun", "src/cli.ts", ...args], {
+  const command = Bun.spawn(["bun", "src/bin/run.ts", ...args], {
     cwd: `${import.meta.dir}/..`,
     stdout: "pipe",
     stderr: "pipe",

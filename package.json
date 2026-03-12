@@ -6,23 +6,24 @@
   "private": true,
   "module": "src/cli.ts",
   "bin": {
-    "run": "bin/run.ts",
-    "runx": "bin/run.ts"
+    "run": "src/bin/run.ts",
+    "runx": "src/bin/run.ts"
   },
-  "files": ["bin", "src", "docs", "README.md"],
+  "files": ["src", "docs", "README.md"],
   "engines": {
     "bun": ">=1.3.9"
   },
   "scripts": {
-    "dev": "bun run src/cli.ts",
-    "build": "mkdir -p dist && bun build src/cli.ts --outfile dist/cli.js --target bun",
+    "dev": "bun run src/bin/run.ts",
+    "build": "mkdir -p dist && bun build src/bin/run.ts --outfile dist/cli.js --target bun",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "lint": "biome check . && markdownlint-cli2 README.md docs/**/*.md",
     "format": "biome format --write . && markdownlint-cli2 --fix README.md docs/**/*.md",
     "check": "bun run lint && bun test",
     "link:global": "bun link",
-    "relink:global": "bun run scripts/relink-global.ts",
+    "unlink:global": "bun unlink",
+    "relink:global": "bun run src/scripts/relink-global.ts",
     "prepare": "husky"
   },
   "devDependencies": {

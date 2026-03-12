@@ -161,7 +161,23 @@ async function detectPythonCommandPrefix(projectRoot: string): Promise<PythonPro
 
 async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestion[]> {
   const suggestions: DetectionSuggestion[] = [];
-  const packageJson = await readPackageJson(projectRoot);
+  const [
+    packageJson,
+    entrypoint,
+    goModuleExists,
+    mainGoExists,
+    cargoTomlExists,
+    pythonEntrypoint,
+    makefileExists,
+  ] = await Promise.all([
+    readPackageJson(projectRoot),
+    findExistingFile(projectRoot, ENTRYPOINT_CANDIDATES),
+    pathExists(path.join(projectRoot, "go.mod")),
+    pathExists(path.join(projectRoot, "main.go")),
+    pathExists(path.join(projectRoot, "Cargo.toml")),
+    findExistingFile(projectRoot, PYTHON_ENTRYPOINTS),
+    pathExists(path.join(projectRoot, "Makefile")),
+  ]);
   const packageManager = await detectPackageManager(projectRoot, packageJson);
   const scripts = packageJson?.scripts ?? {};
 
@@ -188,8 +204,6 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
   }
 
   if (!scripts.start && !scripts.dev) {
-    const entrypoint = await findExistingFile(projectRoot, ENTRYPOINT_CANDIDATES);
-
     if (entrypoint) {
       const isTypeScript = entrypoint.endsWith(".ts");
       const command =
@@ -210,7 +224,7 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
     }
   }
 
-  if (await pathExists(path.join(projectRoot, "go.mod"))) {
+  if (goModuleExists) {
     suggestions.push({
       kind: "default",
       name: "default",
@@ -219,7 +233,7 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
       ecosystem: "go",
       confidence: "high",
     });
-  } else if (await pathExists(path.join(projectRoot, "main.go"))) {
+  } else if (mainGoExists) {
     suggestions.push({
       kind: "default",
       name: "default",
@@ -230,7 +244,7 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
     });
   }
 
-  if (await pathExists(path.join(projectRoot, "Cargo.toml"))) {
+  if (cargoTomlExists) {
     suggestions.push({
       kind: "default",
       name: "default",
@@ -240,8 +254,6 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
       confidence: "high",
     });
   }
-
-  const pythonEntrypoint = await findExistingFile(projectRoot, PYTHON_ENTRYPOINTS);
 
   if (pythonEntrypoint) {
     const pythonCommand = await detectPythonCommandPrefix(projectRoot);
@@ -256,7 +268,7 @@ async function buildSuggestions(projectRoot: string): Promise<DetectionSuggestio
     });
   }
 
-  if (await pathExists(path.join(projectRoot, "Makefile"))) {
+  if (makefileExists) {
     suggestions.push({
       kind: "default",
       name: "default",
@@ -296,13 +308,12 @@ async function findProjectRoot(
   startDir: string,
 ): Promise<{ root: string; markers: string[] } | null> {
   for (const directory of walkUpDirectories(startDir)) {
-    const markers: string[] = [];
-
-    for (const marker of MARKER_FILES) {
-      if (await pathExists(path.join(directory, marker))) {
-        markers.push(marker);
-      }
-    }
+    const markerChecks = await Promise.all(
+      MARKER_FILES.map(async (marker) =>
+        (await pathExists(path.join(directory, marker))) ? marker : null,
+      ),
+    );
+    const markers = markerChecks.filter((marker): marker is string => marker !== null);
 
     if (markers.length > 0) {
       return {
