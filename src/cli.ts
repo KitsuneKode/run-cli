@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseArgs } from "./args.ts";
 import { CacheStore } from "./cache.ts";
+import { renderBashCompletion, renderZshCompletion } from "./completion.ts";
 import {
   listProfiles,
   readGlobalConfig,
@@ -68,6 +69,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           globalConfig,
           useCache,
         });
+        return;
+      case "completion":
+        handleCompletionCommand(secondPositional);
         return;
       case "doctor":
         await handleDoctorCommand({
@@ -248,6 +252,19 @@ async function handleDoctorCommand(options: {
 
   if (options.useCache) {
     await options.cacheStore.save();
+  }
+}
+
+function handleCompletionCommand(shell: string | undefined): void {
+  switch (shell) {
+    case "zsh":
+      info(renderZshCompletion());
+      return;
+    case "bash":
+      info(renderBashCompletion());
+      return;
+    default:
+      throw new Error("Usage: run completion <zsh|bash>");
   }
 }
 
@@ -649,6 +666,7 @@ function printHelp(): void {
 Usage:
   run [profile] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
   run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--profile <name=command>]
+  run completion <zsh|bash>
   run profiles
   run up [profile] [--name <name>]
   run ps [--json]
@@ -666,6 +684,7 @@ Usage:
 Notes:
   - The nearest ${CONFIG_FILE_NAME} wins.
   - Plain "run" executes the effective default profile for the project.
+  - "run completion" prints shell completion scripts for Bash or Zsh.
   - "run up" starts a managed background process with logs, pid, uptime, memory, and ports.
   - "run dashboard" shows the current managed process cluster in one place.`);
 }

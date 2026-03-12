@@ -68,4 +68,18 @@ describe("direct cli run()", () => {
       },
     );
   });
+
+  test("prints completion scripts for zsh and bash", async () => {
+    const zshResult = await captureConsole(async () => {
+      await run(["completion", "zsh"]);
+    });
+    const bashResult = await captureConsole(async () => {
+      await run(["completion", "bash"]);
+    });
+
+    expect(zshResult.stdout).toContain("#compdef run runx");
+    expect(zshResult.stdout).toContain("compdef _run run runx");
+    expect(bashResult.stdout).toContain("complete -F _run_complete run runx");
+    expect(bashResult.stdout).toContain("_run_profiles()");
+  });
 });

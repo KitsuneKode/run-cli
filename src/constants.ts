@@ -11,6 +11,7 @@ export const PROCESS_REGISTRY_VERSION = 1;
 export const FALLBACK_SHELL = "/bin/sh";
 
 export const RESERVED_COMMANDS = new Set([
+  "completion",
   "config",
   "dashboard",
   "doctor",

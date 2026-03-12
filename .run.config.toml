@@ -1,0 +1,23 @@
+version = 1
+default_profile = "dev"
+command = "bun test"
+
+[profiles.default]
+command = "bun test"
+description = "Run the test suite once."
+
+[profiles.dev]
+command = "bun test --watch"
+description = "Watch tests while iterating on the CLI."
+
+[profiles.lint]
+command = "bun run lint"
+description = "Run lint and markdown checks."
+
+[profiles.build]
+command = "bun run build"
+description = "Build the distributable CLI entrypoint."
+
+[profiles.check]
+command = "bun run check"
+description = "Run lint and tests together."

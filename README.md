@@ -49,6 +49,24 @@ If you update the CLI locally and want to refresh the global link cleanly:
 bun run relink:global
 ```
 
+### Shell completion
+
+Generate the script directly from the CLI:
+
+```bash
+run completion zsh > ~/.config/zsh/run.zsh
+run completion bash > ~/.config/bash/run.bash
+```
+
+For Zsh, source it the same way you were doing before:
+
+```bash
+[[ ! -f ~/.config/zsh/run.zsh ]] || source ~/.config/zsh/run.zsh
+```
+
+There are also checked-in loader scripts in [`completions/run.zsh`](completions/run.zsh) and
+[`completions/run.bash`](completions/run.bash) if you prefer to source those directly.
+
 ## Quickstart
 
 Inside a project:
@@ -77,6 +95,7 @@ command = "bun --hot index.ts"
 ```text
 run [profile] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
 run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--profile <name=command>]
+run completion <zsh|bash>
 run profiles
 run up [profile] [--name <name>]
 run ps [--json]
@@ -99,6 +118,7 @@ Preview what would run:
 ```bash
 run --dry-run
 run dev --dry-run
+run completion zsh
 ```
 
 Create config without prompts:
