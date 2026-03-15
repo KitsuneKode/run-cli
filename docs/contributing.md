@@ -107,7 +107,9 @@ Examples of things that should usually get tests:
 - config lookup precedence
 - profile resolution
 - dry-run output
-- managed process metadata
+- managed process metadata and lifecycle (start, stop, restart, prune)
+- process termination escalation and PID reuse detection
+- file locking behavior
 - help text or diagnostics when the wording is contract-relevant
 
 ## Release expectations

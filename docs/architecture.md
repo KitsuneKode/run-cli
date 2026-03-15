@@ -12,9 +12,10 @@
 - `src/cache.ts`: lightweight JSON cache for config and detection metadata
 - `src/exec.ts`: shell-based process execution with signal forwarding
 - `src/init.ts`: interactive and non-interactive config creation
-- `src/process-registry.ts`: XDG-backed managed process registry
-- `src/process-manager.ts`: background process lifecycle operations
-- `src/process-metrics.ts`: on-demand pid, memory, and port inspection
+- `src/file-lock.ts`: lockfile-based mutual exclusion for registry writes
+- `src/process-registry.ts`: XDG-backed managed process registry with file locking and atomic writes
+- `src/process-manager.ts`: background process lifecycle operations with SIGKILL escalation
+- `src/process-metrics.ts`: on-demand pid, memory, port inspection, and PID reuse detection
 - `src/doctor.ts`: diagnostics rendering
 
 The runtime deliberately avoids a heavy CLI framework. Argument parsing stays in-repo to keep startup overhead predictable.
@@ -143,3 +144,12 @@ The registry stores enough information to support:
 `run prune` removes all non-running processes from the registry, keeping `run ps` output clean over time.
 
 The dashboard stays compact, while `inspect` exposes the full command context when processes differ only by forwarded args.
+
+## Process safety
+
+The process management layer includes several hardening measures:
+
+- **File locking:** All registry read-modify-write operations are wrapped in a lockfile-based mutex (`src/file-lock.ts`). The lock uses `O_CREAT | O_EXCL` for atomic creation, with stale lock detection and configurable retry. Callers in `process-manager.ts` and `cli.ts` hold the lock across full cycles (e.g., find + modify + upsert) to prevent race conditions between concurrent `run` instances.
+- **Atomic writes:** Registry writes go through a temp file + rename pattern to prevent partial writes from corrupting `processes.json`. Corrupted reads emit a warning rather than silently returning an empty registry.
+- **Termination escalation:** `terminateProcess` sends SIGTERM, polls for exit (default 2s), escalates to SIGKILL if needed (default 1s), and throws if the process still won't die. Signal delivery uses a TOCTOU-safe wrapper to handle processes that exit between the liveness check and signal.
+- **PID reuse detection:** Each managed process stores a `processStartTime` captured from `ps -o lstart=` at spawn time. All liveness checks compare the stored start time against the current process at that PID, preventing false positives when a PID is reused by an unrelated process after reboot.

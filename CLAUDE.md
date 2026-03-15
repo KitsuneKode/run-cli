@@ -116,3 +116,11 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - Preserve both human-readable and machine-readable diagnostics when touching `doctor` or config flows.
 - Keep overview process commands lightweight; avoid expensive probing on `ps`/`dashboard` unless the command explicitly asks for it.
 - Treat `run ps` and `run dashboard` as cheap overview surfaces; keep per-process memory and port detail in `run inspect` and `run ports`.
+
+## Process management safety
+
+- Registry operations use file locking (`registry.withLock()`) — never skip locking for read-modify-write cycles.
+- Registry writes use atomic temp-file-then-rename — do not use `writeTextFile` for the registry.
+- Process termination uses `terminateProcess()` with SIGTERM→SIGKILL escalation — do not use raw `process.kill()` for managed process shutdown.
+- PID liveness checks pass `processStartTime` to `isProcessRunning()` to detect PID reuse.
+- Zsh completions must not call `compinit`; use `compdef` only if already available.
