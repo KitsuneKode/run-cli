@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { spawn } from "node:child_process";
 
-import { getProcessStartTime, isProcessRunning } from "../src/process-metrics.ts";
+import {
+  getBatchMetrics,
+  getBatchPorts,
+  getProcessStartTime,
+  isProcessRunning,
+} from "../src/process-metrics.ts";
 
 function spawnSleeper(): number {
   const child = spawn("sleep", ["60"], {
@@ -64,6 +69,73 @@ describe("isProcessRunning with PID reuse detection", () => {
 
     try {
       expect(isProcessRunning(pid)).toBe(true);
+    } finally {
+      process.kill(pid, "SIGKILL");
+    }
+  });
+});
+
+describe("getBatchMetrics", () => {
+  test("returns metrics for multiple running processes in a single call", () => {
+    const pid1 = spawnSleeper();
+    const pid2 = spawnSleeper();
+
+    try {
+      const metrics = getBatchMetrics([pid1, pid2]);
+
+      expect(metrics.size).toBe(2);
+      expect(metrics.get(pid1)?.rssKb).toBeNumber();
+      expect(metrics.get(pid1)?.startTime).toBeString();
+      expect(metrics.get(pid2)?.rssKb).toBeNumber();
+      expect(metrics.get(pid2)?.startTime).toBeString();
+    } finally {
+      process.kill(pid1, "SIGKILL");
+      process.kill(pid2, "SIGKILL");
+    }
+  });
+
+  test("returns empty map for empty input", () => {
+    expect(getBatchMetrics([]).size).toBe(0);
+  });
+
+  test("skips non-existent PIDs", () => {
+    const pid = spawnSleeper();
+
+    try {
+      const metrics = getBatchMetrics([pid, 999999]);
+      expect(metrics.has(pid)).toBe(true);
+      expect(metrics.has(999999)).toBe(false);
+    } finally {
+      process.kill(pid, "SIGKILL");
+    }
+  });
+
+  test("start time matches per-process getProcessStartTime", () => {
+    const pid = spawnSleeper();
+
+    try {
+      const single = getProcessStartTime(pid);
+      const batch = getBatchMetrics([pid]);
+      expect(batch.get(pid)?.startTime).toBe(single);
+    } finally {
+      process.kill(pid, "SIGKILL");
+    }
+  });
+});
+
+describe("getBatchPorts", () => {
+  test("returns empty map for empty input", () => {
+    expect(getBatchPorts([]).size).toBe(0);
+  });
+
+  test("returns empty ports for processes not listening", () => {
+    const pid = spawnSleeper();
+
+    try {
+      const ports = getBatchPorts([pid]);
+      // sleep doesn't listen on any ports
+      const pidPorts = ports.get(pid) ?? [];
+      expect(pidPorts.length).toBe(0);
     } finally {
       process.kill(pid, "SIGKILL");
     }

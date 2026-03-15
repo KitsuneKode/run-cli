@@ -5,7 +5,14 @@ import { PROCESS_REGISTRY_VERSION } from "./constants.ts";
 import { getProcessLogsDirPath, getProcessRegistryPath } from "./env-paths.ts";
 import { acquireFileLock, releaseFileLock } from "./file-lock.ts";
 import { pathExists, readTextFile } from "./fs.ts";
-import { getProcessMemoryRssKb, getProcessPorts, isProcessRunning } from "./process-metrics.ts";
+import {
+  type BatchMetrics,
+  getBatchMetrics,
+  getBatchPorts,
+  getProcessMemoryRssKb,
+  getProcessPorts,
+  isProcessRunning,
+} from "./process-metrics.ts";
 import type {
   ManagedProcessRecord,
   ManagedProcessRegistryFile,
@@ -18,6 +25,8 @@ function toSnapshot(
   options?: {
     includePorts?: boolean;
     includeMemory?: boolean;
+    prefetchedMetrics?: BatchMetrics;
+    prefetchedPorts?: number[];
   },
 ): {
   snapshot: ManagedProcessSnapshot;
@@ -25,7 +34,11 @@ function toSnapshot(
 } {
   const previousStatus = processRecord.status;
   const previousUpdatedAt = processRecord.updatedAt;
-  const running = isProcessRunning(processRecord.pid, processRecord.processStartTime);
+
+  // Use prefetched start time for liveness check when available
+  const startTimeToCheck =
+    processRecord.processStartTime ?? options?.prefetchedMetrics?.startTime ?? undefined;
+  const running = isProcessRunning(processRecord.pid, startTimeToCheck);
   const nextStatus =
     processRecord.status === "stopped" ? "stopped" : running ? "running" : "exited";
 
@@ -40,16 +53,24 @@ function toSnapshot(
 
   const effectiveEnd = processRecord.stoppedAt ? new Date(processRecord.stoppedAt).getTime() : now;
 
+  let memoryRssKb: number | null = null;
+
+  if (nextStatus === "running" && options?.includeMemory) {
+    memoryRssKb = options.prefetchedMetrics?.rssKb ?? getProcessMemoryRssKb(processRecord.pid);
+  }
+
+  let ports: number[] = [];
+
+  if (nextStatus === "running" && options?.includePorts) {
+    ports = options.prefetchedPorts ?? getProcessPorts(processRecord.pid);
+  }
+
   return {
     snapshot: {
       ...processRecord,
       uptimeMs: Math.max(0, effectiveEnd - new Date(processRecord.startedAt).getTime()),
-      memoryRssKb:
-        nextStatus === "running" && options?.includeMemory
-          ? getProcessMemoryRssKb(processRecord.pid)
-          : null,
-      ports:
-        nextStatus === "running" && options?.includePorts ? getProcessPorts(processRecord.pid) : [],
+      memoryRssKb,
+      ports,
     },
     changed:
       previousStatus !== processRecord.status || previousUpdatedAt !== processRecord.updatedAt,
@@ -162,9 +183,21 @@ export class ProcessRegistry {
   }): Promise<ManagedProcessSnapshot[]> {
     const registry = await this.read();
     const now = Date.now();
+
+    // Pre-fetch metrics in bulk (2 forks total instead of 3N)
+    const pids = registry.processes.map((r) => r.pid);
+    const needMetrics = options?.includeMemory === true;
+    const needPorts = options?.includePorts === true;
+    const batchMetrics = needMetrics ? getBatchMetrics(pids) : new Map<number, BatchMetrics>();
+    const batchPorts = needPorts ? getBatchPorts(pids) : new Map<number, number[]>();
+
     let changed = false;
     const snapshots = registry.processes.map((processRecord) => {
-      const result = toSnapshot(processRecord, now, options);
+      const result = toSnapshot(processRecord, now, {
+        ...options,
+        prefetchedMetrics: batchMetrics.get(processRecord.pid),
+        prefetchedPorts: batchPorts.get(processRecord.pid),
+      });
 
       if (result.changed) {
         changed = true;
