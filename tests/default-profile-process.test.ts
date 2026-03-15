@@ -120,6 +120,12 @@ describe("default profile and managed process workflow", () => {
         expect(dashboardResult.stdout).toContain("dx-app");
         expect(dashboardResult.stdout).toContain("Next: run inspect <name>");
         expect(dashboardResult.stdout).toContain("ports=lazy");
+        expect(dashboardResult.stdout).toContain("memory=lazy");
+
+        const plainPsResult = await captureConsole(async () => {
+          await run(["ps"]);
+        });
+        expect(plainPsResult.stdout).toContain("-");
 
         const stopResult = await captureConsole(async () => {
           await run(["stop", startedName]);

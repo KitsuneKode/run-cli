@@ -15,6 +15,7 @@ function toSnapshot(
   now: number,
   options?: {
     includePorts?: boolean;
+    includeMemory?: boolean;
   },
 ): {
   snapshot: ManagedProcessSnapshot;
@@ -41,7 +42,10 @@ function toSnapshot(
     snapshot: {
       ...processRecord,
       uptimeMs: Math.max(0, effectiveEnd - new Date(processRecord.startedAt).getTime()),
-      memoryRssKb: nextStatus === "running" ? getProcessMemoryRssKb(processRecord.pid) : null,
+      memoryRssKb:
+        nextStatus === "running" && options?.includeMemory
+          ? getProcessMemoryRssKb(processRecord.pid)
+          : null,
       ports:
         nextStatus === "running" && options?.includePorts ? getProcessPorts(processRecord.pid) : [],
     },
@@ -120,7 +124,10 @@ export class ProcessRegistry {
       return null;
     }
 
-    const { snapshot, changed } = toSnapshot(processRecord, Date.now(), { includePorts: true });
+    const { snapshot, changed } = toSnapshot(processRecord, Date.now(), {
+      includePorts: true,
+      includeMemory: true,
+    });
 
     if (changed) {
       await this.write(registry);
@@ -129,7 +136,10 @@ export class ProcessRegistry {
     return snapshot;
   }
 
-  async listSnapshots(options?: { includePorts?: boolean }): Promise<ManagedProcessSnapshot[]> {
+  async listSnapshots(options?: {
+    includePorts?: boolean;
+    includeMemory?: boolean;
+  }): Promise<ManagedProcessSnapshot[]> {
     const registry = await this.read();
     const now = Date.now();
     let changed = false;

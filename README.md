@@ -10,7 +10,7 @@ Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means r
 - `run -p dev` starts the `dev` profile explicitly
 - `run -- --watch` forwards args to the default command
 - `run doctor --json` exposes machine-readable diagnostics
-- `run ps` and `run dashboard` stay lightweight; port probing is deferred to `run ports` and `run inspect`
+- `run ps` and `run dashboard` stay lightweight; memory and port probing are deferred to `run inspect` and `run ports`
 - `run up` starts a managed background process
 - `run ps` and `run dashboard` show what is running across projects
 - `run init` writes a local config from detected project signals

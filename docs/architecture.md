@@ -119,7 +119,7 @@ Managed processes are intentionally local and lightweight:
 - only processes started by `run up` are tracked
 - metadata is stored in XDG state paths
 - memory and port details are sampled on demand instead of continuously
-- `run ps` and `run dashboard` skip port probing to stay cheap; `run ports` and `run inspect` opt into that extra work
+- `run ps` and `run dashboard` skip memory and port probing to stay cheap; `run ports` and `run inspect` opt into that extra work
 - display names default to project name plus profile
 - stored metadata includes both the base command and forwarded args
 

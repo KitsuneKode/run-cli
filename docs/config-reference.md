@@ -154,5 +154,5 @@ Managed processes are started with `run up` and inspected with:
 
 Performance note:
 
-- `run ps` and `run dashboard` avoid port probing by default to keep overview commands lightweight
-- use `run ports` or `run inspect <name>` when you need listening-port details
+- `run ps` and `run dashboard` avoid memory and port probing by default to keep overview commands lightweight
+- use `run ports` or `run inspect <name>` when you need listening-port or per-process metric details

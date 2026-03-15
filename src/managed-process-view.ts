@@ -59,13 +59,10 @@ export function renderManagedDashboard(processes: ManagedProcessSnapshot[]): str
   const stoppedCount = processes.filter(
     (processRecord) => processRecord.status !== "running",
   ).length;
-  const totalMemory = processes.reduce(
-    (sum, processRecord) => sum + (processRecord.memoryRssKb ?? 0),
-    0,
-  );
+
   return [
     "run dashboard",
-    `running=${runningCount} stopped=${stoppedCount} total=${processes.length} memory=${formatMemory(totalMemory)} ports=lazy`,
+    `running=${runningCount} stopped=${stoppedCount} total=${processes.length} memory=lazy ports=lazy`,
     "",
     renderManagedProcessList(processes, { showPorts: false }).trimEnd(),
     "",

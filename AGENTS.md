@@ -32,7 +32,7 @@ When changing CLI semantics, command output, config lookup, or profile behavior,
 - Reuse the shared command-construction path for foreground runs, managed runs, dry-run output, inspect output, and dashboard-adjacent surfaces.
 - Preserve deterministic text output so humans and agents can reason about the CLI cheaply.
 - When adding diagnostics, keep a stable machine-readable path (`--json`) where practical.
-- Keep overview commands lightweight; defer expensive process probing to explicit commands when possible.
+- Keep overview commands lightweight; defer expensive process probing and per-process metrics to explicit commands when possible.
 
 ## Migration guidance
 
