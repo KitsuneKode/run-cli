@@ -33,7 +33,7 @@ Normal `run` execution follows this order:
 
 Only the nearest project config is active. Ancestor project configs are not merged in v1.
 
-Foreground execution remains the fast path. Managed-process features are only loaded when commands such as `run up`, `run ps`, `run inspect`, `run logs`, `run stop`, `run restart`, `run kill`, `run ports`, and `run dashboard` are used.
+Foreground execution remains the fast path. Managed-process features are only loaded when commands such as `run up`, `run ps`, `run inspect`, `run logs`, `run stop`, `run restart`, `run kill`, `run prune`, `run ports`, and `run dashboard` are used.
 
 ## CLI model
 
@@ -136,7 +136,10 @@ The registry stores enough information to support:
 - `run stop`
 - `run restart`
 - `run kill`
+- `run prune`
 - `run ports`
 - `run dashboard`
+
+`run prune` removes all non-running processes from the registry, keeping `run ps` output clean over time.
 
 The dashboard stays compact, while `inspect` exposes the full command context when processes differ only by forwarded args.

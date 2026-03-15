@@ -160,27 +160,29 @@ export class ProcessRegistry {
     return snapshots;
   }
 
-  async prune(): Promise<{ removed: number; cleaned: string[] }> {
+  async prune(options?: {
+    dryRun?: boolean;
+  }): Promise<{ removed: number; kept: number; cleaned: string[] }> {
     const registry = await this.read();
-    const now = Date.now();
-    const kept: ManagedProcessRecord[] = [];
+    const keptRecords: ManagedProcessRecord[] = [];
     const cleaned: string[] = [];
 
     for (const record of registry.processes) {
-      const running = isProcessRunning(record.pid);
-
-      if (running) {
-        kept.push(record);
+      if (isProcessRunning(record.pid)) {
+        keptRecords.push(record);
       } else {
         cleaned.push(record.name);
       }
     }
 
-    const removed = registry.processes.length - kept.length;
-    registry.processes = kept;
-    await this.write(registry);
+    const removed = registry.processes.length - keptRecords.length;
 
-    return { removed, cleaned };
+    if (!options?.dryRun) {
+      registry.processes = keptRecords;
+      await this.write(registry);
+    }
+
+    return { removed, kept: keptRecords.length, cleaned };
   }
 
   createLogPath(processName: string): string {

@@ -180,14 +180,19 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         }
       case "prune": {
         const registry = new ProcessRegistry();
-        const { removed, cleaned } = await registry.prune();
+        const dryRun = parsed.dryRun;
+        const { removed, kept, cleaned } = await registry.prune({ dryRun });
 
         if (parsed.json) {
-          info(`${JSON.stringify({ removed, cleaned }, null, 2)}\n`);
+          info(`${JSON.stringify({ removed, kept, cleaned, dryRun }, null, 2)}\n`);
         } else if (removed === 0) {
           info("Nothing to prune.");
         } else {
-          info(`Pruned ${removed} dead process${removed === 1 ? "" : "es"}: ${cleaned.join(", ")}`);
+          const prefix = dryRun ? "Would prune" : "Pruned";
+          const suffix = kept > 0 ? ` (${kept} running kept)` : "";
+          info(
+            `${prefix} ${removed} dead process${removed === 1 ? "" : "es"}: ${cleaned.join(", ")}${suffix}`,
+          );
         }
 
         return;
@@ -837,7 +842,7 @@ Usage:
   run stop <name|id>
   run restart <name|id>
   run kill <name|id>
-  run prune [--json]
+  run prune [--json] [--dry-run]
   run ports [--json]
   run config <view|path|edit|validate> [--global]
   run help

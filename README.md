@@ -170,6 +170,7 @@ run logs my-app:worker --follow
 run ports
 run stop my-app:worker
 run restart my-app:worker
+run prune
 ```
 
 ## CLI overview
@@ -188,6 +189,7 @@ run logs <name|id> [--lines <n>] [--follow]
 run stop <name|id>
 run restart <name|id>
 run kill <name|id>
+run prune [--json] [--dry-run]
 run ports [--json]
 run config <view|path|edit|validate> [--global]
 run help
@@ -209,6 +211,7 @@ These are built into `run`:
 - `stop`
 - `restart`
 - `kill`
+- `prune`
 - `ports`
 - `config`
 - `help`
@@ -320,6 +323,7 @@ Performance behavior is intentional:
 - `run ps --details` opts into richer overview metrics
 - they avoid expensive per-process memory and port probing by default
 - `run inspect` and `run ports` opt into more detailed process information
+- `run prune` removes dead (exited/stopped) processes from the registry
 
 This keeps the common path fast and low-overhead.
 
