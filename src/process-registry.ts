@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { PROCESS_REGISTRY_VERSION } from "./constants.ts";
 import { getProcessLogsDirPath, getProcessRegistryPath } from "./env-paths.ts";
+import { acquireFileLock, releaseFileLock } from "./file-lock.ts";
 import { pathExists, readTextFile, writeTextFile } from "./fs.ts";
 import { getProcessMemoryRssKb, getProcessPorts, isProcessRunning } from "./process-metrics.ts";
 import type {
@@ -23,7 +24,7 @@ function toSnapshot(
 } {
   const previousStatus = processRecord.status;
   const previousUpdatedAt = processRecord.updatedAt;
-  const running = isProcessRunning(processRecord.pid);
+  const running = isProcessRunning(processRecord.pid, processRecord.processStartTime);
   const nextStatus =
     processRecord.status === "stopped" ? "stopped" : running ? "running" : "exited";
 
@@ -68,6 +69,16 @@ export class ProcessRegistry {
   constructor(filePath = getProcessRegistryPath(), logsDirPath = getProcessLogsDirPath()) {
     this.filePath = filePath;
     this.logsDirPath = logsDirPath;
+  }
+
+  async withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const fd = await acquireFileLock(this.filePath);
+
+    try {
+      return await fn();
+    } finally {
+      releaseFileLock(fd, this.filePath);
+    }
   }
 
   async read(): Promise<ManagedProcessRegistryFile> {
@@ -168,7 +179,7 @@ export class ProcessRegistry {
     const cleaned: string[] = [];
 
     for (const record of registry.processes) {
-      if (isProcessRunning(record.pid)) {
+      if (isProcessRunning(record.pid, record.processStartTime)) {
         keptRecords.push(record);
       } else {
         cleaned.push(record.name);

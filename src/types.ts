@@ -98,6 +98,7 @@ export interface ManagedProcessRecord {
   command: string;
   cwd: string;
   pid: number;
+  processStartTime?: string;
   shell: string;
   env: Record<string, string>;
   status: ManagedProcessStatus;

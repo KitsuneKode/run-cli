@@ -1,12 +1,34 @@
 import { spawnSync } from "node:child_process";
 
-export function isProcessRunning(pid: number): boolean {
+export function getProcessStartTime(pid: number): string | null {
+  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+    encoding: "utf8",
+  });
+
+  if (result.status !== 0) {
+    return null;
+  }
+
+  const trimmed = result.stdout.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function isProcessRunning(pid: number, expectedStartTime?: string): boolean {
   try {
     process.kill(pid, 0);
-    return true;
   } catch {
     return false;
   }
+
+  if (expectedStartTime) {
+    const actualStartTime = getProcessStartTime(pid);
+
+    if (actualStartTime && actualStartTime !== expectedStartTime) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 export function getProcessMemoryRssKb(pid: number): number | null {

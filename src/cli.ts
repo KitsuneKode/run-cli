@@ -181,7 +181,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "prune": {
         const registry = new ProcessRegistry();
         const dryRun = parsed.dryRun;
-        const { removed, kept, cleaned } = await registry.prune({ dryRun });
+        const { removed, kept, cleaned } = await registry.withLock(() =>
+          registry.prune({ dryRun }),
+        );
 
         if (parsed.json) {
           info(`${JSON.stringify({ removed, kept, cleaned, dryRun }, null, 2)}\n`);
@@ -512,10 +514,12 @@ async function handlePsCommand(options: {
   json: boolean;
   details: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots({
-    includePorts: options.details,
-    includeMemory: options.details,
-  });
+  const snapshots = await options.registry.withLock(() =>
+    options.registry.listSnapshots({
+      includePorts: options.details,
+      includeMemory: options.details,
+    }),
+  );
 
   if (options.json) {
     info(`${JSON.stringify(snapshots, null, 2)}\n`);
@@ -528,10 +532,12 @@ async function handlePsCommand(options: {
 async function handleDashboardCommand(options: {
   registry: ProcessRegistry;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots({
-    includePorts: false,
-    includeMemory: false,
-  });
+  const snapshots = await options.registry.withLock(() =>
+    options.registry.listSnapshots({
+      includePorts: false,
+      includeMemory: false,
+    }),
+  );
   info(renderManagedDashboard(snapshots));
 }
 
@@ -554,10 +560,12 @@ async function handlePortsCommand(options: {
   registry: ProcessRegistry;
   json: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots({
-    includePorts: true,
-    includeMemory: false,
-  });
+  const snapshots = await options.registry.withLock(() =>
+    options.registry.listSnapshots({
+      includePorts: true,
+      includeMemory: false,
+    }),
+  );
   const portRows = snapshots.map((processRecord) => ({
     name: processRecord.name,
     pid: processRecord.pid,
@@ -774,19 +782,21 @@ async function requireProcessSnapshot(
   registry: ProcessRegistry,
   identifier: string,
 ): Promise<ManagedProcessSnapshot> {
-  const processRecord = await registry.getSnapshot(identifier);
+  return await registry.withLock(async () => {
+    const processRecord = await registry.getSnapshot(identifier);
 
-  if (!processRecord) {
-    const snapshots = await registry.listSnapshots();
-    const availableNames = snapshots.map((entry) => entry.name).join(", ");
-    throw new Error(
-      availableNames.length > 0
-        ? `Managed process "${identifier}" was not found. Available: ${availableNames}`
-        : `Managed process "${identifier}" was not found.`,
-    );
-  }
+    if (!processRecord) {
+      const snapshots = await registry.listSnapshots();
+      const availableNames = snapshots.map((entry) => entry.name).join(", ");
+      throw new Error(
+        availableNames.length > 0
+          ? `Managed process "${identifier}" was not found. Available: ${availableNames}`
+          : `Managed process "${identifier}" was not found.`,
+      );
+    }
 
-  return processRecord;
+    return processRecord;
+  });
 }
 
 async function requireIdentifier(

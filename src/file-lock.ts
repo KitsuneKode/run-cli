@@ -1,4 +1,5 @@
-import { constants, closeSync, openSync, statSync, unlinkSync } from "node:fs";
+import { constants, closeSync, mkdirSync, openSync, statSync, unlinkSync } from "node:fs";
+import path from "node:path";
 
 interface LockOptions {
   maxRetries?: number;
@@ -32,6 +33,7 @@ function tryReclaimStaleLock(lockPath: string, staleMs: number): boolean {
 
 export async function acquireFileLock(filePath: string, options?: LockOptions): Promise<number> {
   const lockPath = lockPathFor(filePath);
+  mkdirSync(path.dirname(lockPath), { recursive: true });
   const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
   const retryIntervalMs = options?.retryIntervalMs ?? DEFAULT_RETRY_INTERVAL_MS;
   const staleMs = options?.staleMs ?? DEFAULT_STALE_MS;

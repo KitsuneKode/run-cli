@@ -3,7 +3,7 @@ import { closeSync, mkdirSync, openSync } from "node:fs";
 
 import { resolveCommandLine } from "./command-line.ts";
 import { FALLBACK_SHELL } from "./constants.ts";
-import { isProcessRunning } from "./process-metrics.ts";
+import { getProcessStartTime, isProcessRunning } from "./process-metrics.ts";
 import type { ProcessRegistry } from "./process-registry.ts";
 import { detectProjectName } from "./project-name.ts";
 import type {
@@ -39,7 +39,61 @@ async function createUniqueName(registry: ProcessRegistry, desiredName: string):
   return `${desiredName}#${suffix}`;
 }
 
-export async function startManagedProcess(options: {
+function trySendSignal(pid: number, signal: NodeJS.Signals): void {
+  try {
+    process.kill(pid, signal);
+  } catch {
+    // Process may have exited between liveness check and signal — safe to ignore
+  }
+}
+
+export async function terminateProcess(
+  pid: number,
+  options?: { termGraceMs?: number; killGraceMs?: number },
+): Promise<void> {
+  const termGraceMs = options?.termGraceMs ?? 2000;
+  const killGraceMs = options?.killGraceMs ?? 1000;
+  const termPollInterval = 100;
+  const killPollInterval = 100;
+
+  if (!isProcessRunning(pid)) {
+    return;
+  }
+
+  // Phase 1: SIGTERM
+  trySendSignal(pid, "SIGTERM");
+
+  for (let elapsed = 0; elapsed < termGraceMs; elapsed += termPollInterval) {
+    if (!isProcessRunning(pid)) {
+      return;
+    }
+
+    await Bun.sleep(termPollInterval);
+  }
+
+  // Phase 2: SIGKILL
+  if (isProcessRunning(pid)) {
+    trySendSignal(pid, "SIGKILL");
+  }
+
+  for (let elapsed = 0; elapsed < killGraceMs; elapsed += killPollInterval) {
+    if (!isProcessRunning(pid)) {
+      return;
+    }
+
+    await Bun.sleep(killPollInterval);
+  }
+
+  // Phase 3: give up
+  if (isProcessRunning(pid)) {
+    throw new Error(
+      `Process ${pid} did not terminate after SIGTERM (${termGraceMs}ms) and SIGKILL (${killGraceMs}ms).`,
+    );
+  }
+}
+
+// Unlocked core — called from within an existing lock
+async function startManagedProcessCore(options: {
   profile: ResolvedProfile;
   globalConfig: GlobalConfig;
   registry: ProcessRegistry;
@@ -87,6 +141,7 @@ export async function startManagedProcess(options: {
     command: commandLine.shellCommand,
     cwd: options.profile.cwd,
     pid: child.pid ?? -1,
+    processStartTime: child.pid ? (getProcessStartTime(child.pid) ?? undefined) : undefined,
     shell,
     env: options.profile.env,
     status: "running",
@@ -109,29 +164,45 @@ export async function startManagedProcess(options: {
   return processRecord;
 }
 
+// Public locked wrapper
+export async function startManagedProcess(options: {
+  profile: ResolvedProfile;
+  globalConfig: GlobalConfig;
+  registry: ProcessRegistry;
+  nameOverride?: string;
+  existingProcess?: ManagedProcessRecord;
+  args?: string[];
+}): Promise<ManagedProcessRecord> {
+  return await options.registry.withLock(async () => {
+    return await startManagedProcessCore(options);
+  });
+}
+
 export async function signalManagedProcess(
   registry: ProcessRegistry,
   identifier: string,
   signal: NodeJS.Signals,
   nextStatus: "stopped" | "exited",
 ): Promise<ManagedProcessRecord> {
-  const processRecord = await registry.findByNameOrId(identifier);
+  return await registry.withLock(async () => {
+    const processRecord = await registry.findByNameOrId(identifier);
 
-  if (!processRecord) {
-    throw new Error(`Managed process "${identifier}" was not found.`);
-  }
+    if (!processRecord) {
+      throw new Error(`Managed process "${identifier}" was not found.`);
+    }
 
-  if (isProcessRunning(processRecord.pid)) {
-    process.kill(processRecord.pid, signal);
-  }
+    if (isProcessRunning(processRecord.pid, processRecord.processStartTime)) {
+      process.kill(processRecord.pid, signal);
+    }
 
-  processRecord.status = nextStatus;
-  processRecord.stoppedAt = new Date().toISOString();
-  processRecord.updatedAt = processRecord.stoppedAt;
-  processRecord.lastSignal = signal;
+    processRecord.status = nextStatus;
+    processRecord.stoppedAt = new Date().toISOString();
+    processRecord.updatedAt = processRecord.stoppedAt;
+    processRecord.lastSignal = signal;
 
-  await registry.upsert(processRecord);
-  return processRecord;
+    await registry.upsert(processRecord);
+    return processRecord;
+  });
 }
 
 export async function restartManagedProcess(
@@ -141,38 +212,30 @@ export async function restartManagedProcess(
     globalConfig: GlobalConfig;
   },
 ): Promise<ManagedProcessRecord> {
-  const existingProcess = await registry.findByNameOrId(identifier);
+  return await registry.withLock(async () => {
+    const existingProcess = await registry.findByNameOrId(identifier);
 
-  if (!existingProcess) {
-    throw new Error(`Managed process "${identifier}" was not found.`);
-  }
-
-  if (isProcessRunning(existingProcess.pid)) {
-    process.kill(existingProcess.pid, "SIGTERM");
-
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      if (!isProcessRunning(existingProcess.pid)) {
-        break;
-      }
-
-      await Bun.sleep(100);
+    if (!existingProcess) {
+      throw new Error(`Managed process "${identifier}" was not found.`);
     }
-  }
 
-  const profile: ResolvedProfile = {
-    name: existingProcess.profile,
-    command: existingProcess.baseCommand,
-    cwd: existingProcess.cwd,
-    env: existingProcess.env,
-    sourcePath: existingProcess.configPath,
-    configDir: existingProcess.projectRoot,
-  };
+    await terminateProcess(existingProcess.pid);
 
-  return await startManagedProcess({
-    profile,
-    globalConfig: options.globalConfig,
-    registry,
-    existingProcess,
-    args: existingProcess.commandArgs,
+    const profile: ResolvedProfile = {
+      name: existingProcess.profile,
+      command: existingProcess.baseCommand,
+      cwd: existingProcess.cwd,
+      env: existingProcess.env,
+      sourcePath: existingProcess.configPath,
+      configDir: existingProcess.projectRoot,
+    };
+
+    return await startManagedProcessCore({
+      profile,
+      globalConfig: options.globalConfig,
+      registry,
+      existingProcess,
+      args: existingProcess.commandArgs,
+    });
   });
 }
