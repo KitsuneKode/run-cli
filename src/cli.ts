@@ -178,6 +178,20 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           });
           return;
         }
+      case "prune": {
+        const registry = new ProcessRegistry();
+        const { removed, cleaned } = await registry.prune();
+
+        if (parsed.json) {
+          info(`${JSON.stringify({ removed, cleaned }, null, 2)}\n`);
+        } else if (removed === 0) {
+          info("Nothing to prune.");
+        } else {
+          info(`Pruned ${removed} dead process${removed === 1 ? "" : "es"}: ${cleaned.join(", ")}`);
+        }
+
+        return;
+      }
       case "ports":
         await handlePortsCommand({
           registry: new ProcessRegistry(),
@@ -823,6 +837,7 @@ Usage:
   run stop <name|id>
   run restart <name|id>
   run kill <name|id>
+  run prune [--json]
   run ports [--json]
   run config <view|path|edit|validate> [--global]
   run help

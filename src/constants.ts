@@ -24,6 +24,7 @@ export const RESERVED_COMMANDS = new Set([
   "logs",
   "ports",
   "profiles",
+  "prune",
   "ps",
   "restart",
   "stop",

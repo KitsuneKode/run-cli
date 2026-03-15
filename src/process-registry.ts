@@ -160,6 +160,29 @@ export class ProcessRegistry {
     return snapshots;
   }
 
+  async prune(): Promise<{ removed: number; cleaned: string[] }> {
+    const registry = await this.read();
+    const now = Date.now();
+    const kept: ManagedProcessRecord[] = [];
+    const cleaned: string[] = [];
+
+    for (const record of registry.processes) {
+      const running = isProcessRunning(record.pid);
+
+      if (running) {
+        kept.push(record);
+      } else {
+        cleaned.push(record.name);
+      }
+    }
+
+    const removed = registry.processes.length - kept.length;
+    registry.processes = kept;
+    await this.write(registry);
+
+    return { removed, cleaned };
+  }
+
   createLogPath(processName: string): string {
     const safeName = processName.replace(/[^a-zA-Z0-9:_-]+/g, "-");
     const timestamp = new Date().toISOString().replaceAll(":", "-");
