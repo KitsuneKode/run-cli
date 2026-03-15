@@ -15,7 +15,7 @@
 - `src/file-lock.ts`: lockfile-based mutual exclusion for registry writes
 - `src/process-registry.ts`: XDG-backed managed process registry with file locking and atomic writes
 - `src/process-manager.ts`: background process lifecycle operations with SIGKILL escalation
-- `src/process-metrics.ts`: on-demand pid, memory, port inspection, and PID reuse detection
+- `src/process-metrics.ts`: on-demand pid, memory, port inspection, PID reuse detection, and batched metric collection
 - `src/doctor.ts`: diagnostics rendering
 
 The runtime deliberately avoids a heavy CLI framework. Argument parsing stays in-repo to keep startup overhead predictable.
@@ -153,3 +153,4 @@ The process management layer includes several hardening measures:
 - **Atomic writes:** Registry writes go through a temp file + rename pattern to prevent partial writes from corrupting `processes.json`. Corrupted reads emit a warning rather than silently returning an empty registry.
 - **Termination escalation:** `terminateProcess` sends SIGTERM, polls for exit (default 2s), escalates to SIGKILL if needed (default 1s), and throws if the process still won't die. Signal delivery uses a TOCTOU-safe wrapper to handle processes that exit between the liveness check and signal.
 - **PID reuse detection:** Each managed process stores a `processStartTime` captured from `ps -o lstart=` at spawn time. All liveness checks compare the stored start time against the current process at that PID, preventing false positives when a PID is reused by an unrelated process after reboot.
+- **Batched metrics:** `listSnapshots` pre-fetches all process metrics with a single `ps` call and a single `lsof` call (2 forks total), instead of spawning per-process (3N forks). Single-process paths like `getSnapshot` still use per-PID calls since there's no batching benefit.

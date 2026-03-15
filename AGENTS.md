@@ -35,6 +35,7 @@ When modifying process management code, understand these safety invariants:
 - **Atomic writes:** Registry writes use write-to-temp-then-rename. Do not use `writeTextFile` for the registry.
 - **Termination:** Use `terminateProcess()` for process shutdown. It escalates SIGTERM → SIGKILL → error. Use `trySendSignal()` for TOCTOU-safe signal delivery (process may exit between liveness check and signal).
 - **PID reuse:** `isProcessRunning(pid, processStartTime?)` accepts an optional start time to detect PID reuse. Always pass `processRecord.processStartTime` when checking liveness of a managed process. Start time is captured from `ps -o lstart=` at spawn.
+- **Batched metrics:** `listSnapshots` uses `getBatchMetrics` and `getBatchPorts` (2 forks total for all PIDs). Single-process paths (`getSnapshot`) use per-PID calls. When adding new metrics, add both a per-PID function and a batch variant.
 - **Shell completions:** The zsh completion script must NOT call `compinit` — only use `compdef` if available. Use `${(j: :)array}` to join arrays in `_arguments` specs, `${line[1]}` (not `${words[2]}`) for subcommand dispatch after `*::arg:->args`.
 
 ## Implementation guidance
