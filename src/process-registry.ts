@@ -1,9 +1,10 @@
+import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { PROCESS_REGISTRY_VERSION } from "./constants.ts";
 import { getProcessLogsDirPath, getProcessRegistryPath } from "./env-paths.ts";
 import { acquireFileLock, releaseFileLock } from "./file-lock.ts";
-import { pathExists, readTextFile, writeTextFile } from "./fs.ts";
+import { pathExists, readTextFile } from "./fs.ts";
 import { getProcessMemoryRssKb, getProcessPorts, isProcessRunning } from "./process-metrics.ts";
 import type {
   ManagedProcessRecord,
@@ -94,13 +95,21 @@ export class ProcessRegistry {
       }
 
       return parsed;
-    } catch {
+    } catch (error) {
+      console.error(
+        `warning: process registry at ${this.filePath} is corrupted and will be reset.`,
+        error instanceof Error ? error.message : "",
+      );
       return createEmptyRegistry();
     }
   }
 
   async write(registry: ManagedProcessRegistryFile): Promise<void> {
-    await writeTextFile(this.filePath, `${JSON.stringify(registry, null, 2)}\n`);
+    const content = `${JSON.stringify(registry, null, 2)}\n`;
+    const tmpPath = `${this.filePath}.tmp`;
+    mkdirSync(path.dirname(this.filePath), { recursive: true });
+    writeFileSync(tmpPath, content, "utf8");
+    renameSync(tmpPath, this.filePath);
   }
 
   async upsert(processRecord: ManagedProcessRecord): Promise<void> {
