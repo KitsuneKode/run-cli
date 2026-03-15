@@ -128,12 +128,7 @@ export function renderZshCompletion(): string {
     "",
     'if [ "$funcstack[1]" = "_run" ]; then',
     '  _run "$@"',
-    "else",
-    "  if ! (( $+functions[compdef] )); then",
-    "    autoload -Uz compinit",
-    '    compinit -i -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump-run"',
-    "  fi",
-    "",
+    "elif (( $+functions[compdef] )); then",
     "  compdef _run run runx",
     "fi",
   ]);
