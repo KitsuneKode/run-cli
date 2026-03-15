@@ -119,6 +119,7 @@ describe("default profile and managed process workflow", () => {
         expect(dashboardResult.stdout).toContain("run dashboard");
         expect(dashboardResult.stdout).toContain("dx-app");
         expect(dashboardResult.stdout).toContain("Next: run inspect <name>");
+        expect(dashboardResult.stdout).toContain("ports=lazy");
 
         const stopResult = await captureConsole(async () => {
           await run(["stop", startedName]);
@@ -145,6 +146,11 @@ describe("default profile and managed process workflow", () => {
         expect((stoppedRecord as { commandArgs?: string[] } | undefined)?.commandArgs).toContain(
           "--flag",
         );
+
+        const portsResult = await captureConsole(async () => {
+          await run(["ports"]);
+        });
+        expect(portsResult.stdout).toContain("ports=");
 
         await captureConsole(async () => {
           await run(["stop", startedName]);

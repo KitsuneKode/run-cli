@@ -12,22 +12,42 @@ function padRows(headers: string[], rows: string[][]): string {
   return [renderRow(headers), ...rows.map(renderRow)].join("\n");
 }
 
-export function renderManagedProcessList(processes: ManagedProcessSnapshot[]): string {
+export function renderManagedProcessList(
+  processes: ManagedProcessSnapshot[],
+  options?: {
+    showPorts?: boolean;
+  },
+): string {
   if (processes.length === 0) {
     return "No managed processes.\n";
   }
 
-  const headers = ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PORTS", "PROJECT"];
-  const rows = processes.map((processRecord) => [
-    processRecord.name,
-    processRecord.profile,
-    processRecord.status,
-    String(processRecord.pid),
-    formatDuration(processRecord.uptimeMs),
-    formatMemory(processRecord.memoryRssKb),
-    processRecord.ports.length > 0 ? processRecord.ports.join(",") : "-",
-    processRecord.projectName,
-  ]);
+  const showPorts = options?.showPorts ?? true;
+  const headers = showPorts
+    ? ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PORTS", "PROJECT"]
+    : ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PROJECT"];
+  const rows = processes.map((processRecord) =>
+    showPorts
+      ? [
+          processRecord.name,
+          processRecord.profile,
+          processRecord.status,
+          String(processRecord.pid),
+          formatDuration(processRecord.uptimeMs),
+          formatMemory(processRecord.memoryRssKb),
+          processRecord.ports.length > 0 ? processRecord.ports.join(",") : "-",
+          processRecord.projectName,
+        ]
+      : [
+          processRecord.name,
+          processRecord.profile,
+          processRecord.status,
+          String(processRecord.pid),
+          formatDuration(processRecord.uptimeMs),
+          formatMemory(processRecord.memoryRssKb),
+          processRecord.projectName,
+        ],
+  );
 
   return `${padRows(headers, rows)}\n`;
 }
@@ -43,15 +63,13 @@ export function renderManagedDashboard(processes: ManagedProcessSnapshot[]): str
     (sum, processRecord) => sum + (processRecord.memoryRssKb ?? 0),
     0,
   );
-  const uniquePorts = new Set(processes.flatMap((processRecord) => processRecord.ports));
-
   return [
     "run dashboard",
-    `running=${runningCount} stopped=${stoppedCount} total=${processes.length} memory=${formatMemory(totalMemory)} ports=${uniquePorts.size}`,
+    `running=${runningCount} stopped=${stoppedCount} total=${processes.length} memory=${formatMemory(totalMemory)} ports=lazy`,
     "",
-    renderManagedProcessList(processes).trimEnd(),
+    renderManagedProcessList(processes, { showPorts: false }).trimEnd(),
     "",
-    "Next: run inspect <name> | run logs <name> --follow | run stop <name> | run restart <name>",
+    "Next: run inspect <name> | run logs <name> --follow | run ports | run stop <name> | run restart <name>",
     "",
   ].join("\n");
 }

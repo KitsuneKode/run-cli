@@ -491,20 +491,20 @@ async function handlePsCommand(options: {
   registry: ProcessRegistry;
   json: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots();
+  const snapshots = await options.registry.listSnapshots({ includePorts: false });
 
   if (options.json) {
     info(`${JSON.stringify(snapshots, null, 2)}\n`);
     return;
   }
 
-  info(renderManagedProcessList(snapshots));
+  info(renderManagedProcessList(snapshots, { showPorts: false }));
 }
 
 async function handleDashboardCommand(options: {
   registry: ProcessRegistry;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots();
+  const snapshots = await options.registry.listSnapshots({ includePorts: false });
   info(renderManagedDashboard(snapshots));
 }
 
@@ -527,7 +527,7 @@ async function handlePortsCommand(options: {
   registry: ProcessRegistry;
   json: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.listSnapshots();
+  const snapshots = await options.registry.listSnapshots({ includePorts: true });
   const portRows = snapshots.map((processRecord) => ({
     name: processRecord.name,
     pid: processRecord.pid,

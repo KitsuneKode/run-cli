@@ -151,3 +151,8 @@ Managed processes are started with `run up` and inspected with:
 - `run up`
 - `run up -p worker`
 - `run up -- --port 4000`
+
+Performance note:
+
+- `run ps` and `run dashboard` avoid port probing by default to keep overview commands lightweight
+- use `run ports` or `run inspect <name>` when you need listening-port details

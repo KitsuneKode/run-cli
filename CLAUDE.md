@@ -114,3 +114,4 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - Keep the default startup banner minimal and polished; only show richer execution detail behind `--verbose`.
 - Reuse the shared command-construction path so dry-run, normal run, managed processes, dashboard, and inspect all report the same command shape.
 - Preserve both human-readable and machine-readable diagnostics when touching `doctor` or config flows.
+- Keep overview process commands lightweight; avoid expensive probing on `ps`/`dashboard` unless the command explicitly asks for it.
