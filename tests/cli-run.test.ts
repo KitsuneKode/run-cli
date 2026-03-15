@@ -14,6 +14,7 @@ describe("direct cli run()", () => {
 
     expect(result.stdout).toContain("Usage:");
     expect(result.stdout).toContain("run init");
+    expect(result.stdout).toContain('plain "run" = default command');
     expect(result.exitCode).toBe(0);
   });
 
@@ -139,7 +140,11 @@ describe("direct cli run()", () => {
     expect(zshResult.stdout).toContain("#compdef run runx");
     expect(zshResult.stdout).toContain("compdef _run run runx");
     expect(zshResult.stdout).toContain("--profile[Select a named profile]");
+    expect(zshResult.stdout).toContain(
+      "--details[Show detailed managed-process metrics where supported]",
+    );
+    expect(zshResult.stdout).toContain("if (( ${words[(I)--]} )); then");
     expect(bashResult.stdout).toContain("complete -F _run_complete run runx");
-    expect(bashResult.stdout).toContain("--verbose -v --profile -p");
+    expect(bashResult.stdout).toContain("--verbose -v --details --profile -p");
   });
 });

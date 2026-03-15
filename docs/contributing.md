@@ -76,6 +76,7 @@ Keep the CLI easy for both humans and tools to reason about.
 - richer explanation belongs behind explicit flags like `--verbose`
 - keep `--dry-run` trustworthy
 - preserve machine-readable diagnostics like `run doctor --json`
+- document any new `--json` schema fields when you change them
 - avoid decorative output that becomes noisy in logs
 
 ### Shared execution path

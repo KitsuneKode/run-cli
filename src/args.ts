@@ -14,6 +14,7 @@ export interface ParsedArgs {
   defaultProfile?: string;
   name?: string;
   json: boolean;
+  details: boolean;
   follow: boolean;
   lines?: number;
   addProfiles: Array<{ name: string; command: string }>;
@@ -37,6 +38,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     force: false,
     yes: false,
     json: false,
+    details: false,
     follow: false,
     addProfiles: [],
     commandArgs: [],
@@ -107,6 +109,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--json":
       case "-j":
         parsed.json = true;
+        continue;
+      case "--details":
+        parsed.details = true;
         continue;
       case "--follow":
       case "-f":

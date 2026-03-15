@@ -122,6 +122,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         await handlePsCommand({
           registry: new ProcessRegistry(),
           json: parsed.json,
+          details: parsed.details,
         });
         return;
       case "dashboard":
@@ -490,10 +491,11 @@ async function handleUpCommand(options: {
 async function handlePsCommand(options: {
   registry: ProcessRegistry;
   json: boolean;
+  details: boolean;
 }): Promise<void> {
   const snapshots = await options.registry.listSnapshots({
-    includePorts: false,
-    includeMemory: false,
+    includePorts: options.details,
+    includeMemory: options.details,
   });
 
   if (options.json) {
@@ -501,7 +503,7 @@ async function handlePsCommand(options: {
     return;
   }
 
-  info(renderManagedProcessList(snapshots, { showPorts: false }));
+  info(renderManagedProcessList(snapshots, { showPorts: options.details }));
 }
 
 async function handleDashboardCommand(options: {
@@ -825,11 +827,19 @@ Usage:
   run config <view|path|edit|validate> [--global]
   run help
 
+Mental model:
+  - plain "run" = default command
+  - "run -p <profile>" = named profile
+  - "run -- <args...>" = child command args
+  - built-in subcommands like "doctor", "inspect", and "ports" only apply before "--"
+
 Examples:
   run
   run -- --watch
+  run -- doctor
   run -p dev -- --port 3000
   run up -p worker
+  run ps --details
   run init --yes --add-profile dev="bun --hot index.ts"
 
 Notes:
@@ -837,6 +847,7 @@ Notes:
   - Plain "run" executes the effective default profile for the project.
   - Profiles are explicit: use "run -p <profile>".
   - Use "--" to pass flags through to the underlying command.
+  - "run ps" is lightweight by default; use "run ps --details", "run inspect", or "run ports" for deeper process data.
   - "run completion" prints shell completion scripts for Bash or Zsh.
   - "run up" starts a managed background process with logs, pid, uptime, memory, and ports.
   - "run dashboard" shows the current managed process cluster in one place.`);

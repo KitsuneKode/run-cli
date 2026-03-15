@@ -133,11 +133,37 @@ Compatibility note:
 - `run config validate` confirms that the nearest project config parses and resolves
 - `run doctor --json` prints a machine-readable resolution report for scripts, editors, and agents
 
+### `run doctor --json` fields
+
+Top-level fields:
+
+- `cwd`: effective working directory
+- `configLookup`: resolved config metadata or `null`
+- `globalConfigPath`: global config path
+- `cacheFilePath`: cache file path
+- `shell`: effective shell
+- `cacheEnabled`: boolean
+- `detectedProject`: detected project metadata or `null`
+
+`configLookup` fields:
+
+- `sourcePath`
+- `cacheHit`
+- `legacy`
+
+`detectedProject` fields:
+
+- `root`
+- `markers`
+- `cacheHit`
+- `suggestions`
+
 ## Managed process commands
 
 Managed processes are started with `run up` and inspected with:
 
 - `run ps`
+- `run ps --details`
 - `run inspect <name|id>`
 - `run logs <name|id>`
 - `run stop <name|id>`
@@ -155,4 +181,5 @@ Managed processes are started with `run up` and inspected with:
 Performance note:
 
 - `run ps` and `run dashboard` avoid memory and port probing by default to keep overview commands lightweight
+- `run ps --details` opts into richer overview output while keeping the default `run ps` cheap
 - use `run ports` or `run inspect <name>` when you need listening-port or per-process metric details

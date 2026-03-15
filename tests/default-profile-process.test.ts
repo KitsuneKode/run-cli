@@ -127,6 +127,11 @@ describe("default profile and managed process workflow", () => {
         });
         expect(plainPsResult.stdout).toContain("-");
 
+        const detailedPsResult = await captureConsole(async () => {
+          await run(["ps", "--details"]);
+        });
+        expect(detailedPsResult.stdout).toContain("PORTS");
+
         const stopResult = await captureConsole(async () => {
           await run(["stop", startedName]);
         });

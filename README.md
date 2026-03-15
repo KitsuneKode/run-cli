@@ -163,6 +163,7 @@ run config validate
 run up
 run up -p worker -- --port 4000
 run ps
+run ps --details
 run dashboard
 run inspect my-app:worker
 run logs my-app:worker --follow
@@ -272,6 +273,31 @@ The CLI tries to stay polished without becoming noisy.
 - `run doctor` is the readable diagnostic report
 - `run doctor --json` is the machine-readable diagnostic report
 
+### `doctor --json` shape
+
+`run doctor --json` currently returns:
+
+- `cwd`: current effective working directory
+- `configLookup`: resolved config metadata or `null`
+- `globalConfigPath`: global config path
+- `cacheFilePath`: cache file path
+- `shell`: effective shell
+- `cacheEnabled`: whether cache is enabled
+- `detectedProject`: detected project metadata or `null`
+
+`configLookup`, when present, contains:
+
+- `sourcePath`
+- `cacheHit`
+- `legacy`
+
+`detectedProject`, when present, contains:
+
+- `root`
+- `markers`
+- `cacheHit`
+- `suggestions`
+
 ## Managed processes
 
 `run up` stores a lightweight registry for processes it starts itself.
@@ -291,6 +317,7 @@ Managed process metadata includes:
 Performance behavior is intentional:
 
 - `run ps` and `run dashboard` are cheap overview commands
+- `run ps --details` opts into richer overview metrics
 - they avoid expensive per-process memory and port probing by default
 - `run inspect` and `run ports` opt into more detailed process information
 

@@ -65,6 +65,8 @@ The CLI keeps both human and agent-facing diagnostics deterministic:
 - `run doctor --json` is the machine-readable report
 - `run config validate` is the cheapest validation path for config-only checks
 
+The `doctor --json` shape should stay stable enough for tooling to consume without scraping the text report.
+
 ## Detection heuristics
 
 The detector walks upward until it finds a directory with recognizable project markers. Suggestions are then ranked roughly like this:
@@ -122,6 +124,7 @@ Managed processes are intentionally local and lightweight:
 - metadata is stored in XDG state paths
 - memory and port details are sampled on demand instead of continuously
 - `run ps` and `run dashboard` skip memory and port probing to stay cheap; `run ports` and `run inspect` opt into that extra work
+- `run ps --details` is the opt-in richer overview path when the user explicitly wants more than the cheap default
 - display names default to project name plus profile
 - stored metadata includes both the base command and forwarded args
 
