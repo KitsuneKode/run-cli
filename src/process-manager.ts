@@ -173,5 +173,6 @@ export async function restartManagedProcess(
     globalConfig: options.globalConfig,
     registry,
     existingProcess,
+    args: existingProcess.commandArgs,
   });
 }

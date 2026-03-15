@@ -10,6 +10,46 @@ import type {
   ManagedProcessSnapshot,
 } from "./types.ts";
 
+function toSnapshot(
+  processRecord: ManagedProcessRecord,
+  now: number,
+  options?: {
+    includePorts?: boolean;
+  },
+): {
+  snapshot: ManagedProcessSnapshot;
+  changed: boolean;
+} {
+  const previousStatus = processRecord.status;
+  const previousUpdatedAt = processRecord.updatedAt;
+  const running = isProcessRunning(processRecord.pid);
+  const nextStatus =
+    processRecord.status === "stopped" ? "stopped" : running ? "running" : "exited";
+
+  if (nextStatus !== processRecord.status) {
+    processRecord.status = nextStatus;
+    processRecord.updatedAt = new Date(now).toISOString();
+
+    if (nextStatus !== "running" && !processRecord.stoppedAt) {
+      processRecord.stoppedAt = new Date(now).toISOString();
+    }
+  }
+
+  const effectiveEnd = processRecord.stoppedAt ? new Date(processRecord.stoppedAt).getTime() : now;
+
+  return {
+    snapshot: {
+      ...processRecord,
+      uptimeMs: Math.max(0, effectiveEnd - new Date(processRecord.startedAt).getTime()),
+      memoryRssKb: nextStatus === "running" ? getProcessMemoryRssKb(processRecord.pid) : null,
+      ports:
+        nextStatus === "running" && options?.includePorts ? getProcessPorts(processRecord.pid) : [],
+    },
+    changed:
+      previousStatus !== processRecord.status || previousUpdatedAt !== processRecord.updatedAt,
+  };
+}
+
 function createEmptyRegistry(): ManagedProcessRegistryFile {
   return {
     version: PROCESS_REGISTRY_VERSION,
@@ -70,36 +110,37 @@ export class ProcessRegistry {
     );
   }
 
-  async listSnapshots(): Promise<ManagedProcessSnapshot[]> {
+  async getSnapshot(identifier: string): Promise<ManagedProcessSnapshot | null> {
+    const registry = await this.read();
+    const processRecord =
+      registry.processes.find((entry) => entry.id === identifier || entry.name === identifier) ??
+      null;
+
+    if (!processRecord) {
+      return null;
+    }
+
+    const { snapshot, changed } = toSnapshot(processRecord, Date.now(), { includePorts: true });
+
+    if (changed) {
+      await this.write(registry);
+    }
+
+    return snapshot;
+  }
+
+  async listSnapshots(options?: { includePorts?: boolean }): Promise<ManagedProcessSnapshot[]> {
     const registry = await this.read();
     const now = Date.now();
     let changed = false;
     const snapshots = registry.processes.map((processRecord) => {
-      const running = isProcessRunning(processRecord.pid);
-      const nextStatus =
-        processRecord.status === "stopped" ? "stopped" : running ? "running" : "exited";
+      const result = toSnapshot(processRecord, now, options);
 
-      if (nextStatus !== processRecord.status) {
-        processRecord.status = nextStatus;
-        processRecord.updatedAt = new Date(now).toISOString();
-
-        if (nextStatus !== "running" && !processRecord.stoppedAt) {
-          processRecord.stoppedAt = new Date(now).toISOString();
-        }
-
+      if (result.changed) {
         changed = true;
       }
 
-      const effectiveEnd = processRecord.stoppedAt
-        ? new Date(processRecord.stoppedAt).getTime()
-        : now;
-
-      return {
-        ...processRecord,
-        uptimeMs: Math.max(0, effectiveEnd - new Date(processRecord.startedAt).getTime()),
-        memoryRssKb: nextStatus === "running" ? getProcessMemoryRssKb(processRecord.pid) : null,
-        ports: nextStatus === "running" ? getProcessPorts(processRecord.pid) : [],
-      };
+      return result.snapshot;
     });
 
     if (changed) {

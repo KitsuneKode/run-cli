@@ -113,3 +113,4 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 - When changing CLI semantics, update tests, completions, `README.md`, docs, and `AGENTS.md` in the same change.
 - Keep the default startup banner minimal and polished; only show richer execution detail behind `--verbose`.
 - Reuse the shared command-construction path so dry-run, normal run, managed processes, dashboard, and inspect all report the same command shape.
+- Preserve both human-readable and machine-readable diagnostics when touching `doctor` or config flows.

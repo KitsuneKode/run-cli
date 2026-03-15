@@ -25,6 +25,9 @@ export interface ParsedArgs {
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
+  const firstToken = argv[0];
+  const defaultMode = !firstToken || !RESERVED_COMMANDS.has(firstToken);
+  const subcommand = defaultMode ? undefined : firstToken;
   const parsed: ParsedArgs = {
     positionals: [],
     dryRun: false,
@@ -42,10 +45,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     deprecatedInitProfileFlagUsed: false,
   };
 
-  const subcommand = argv[0];
   const isInit = subcommand === "init";
   const isUp = subcommand === "up";
-  const isReservedSubcommand = RESERVED_COMMANDS.has(subcommand ?? "");
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -57,11 +58,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (token === "--") {
       parsed.passthrough = true;
       parsed.commandArgs.push(...argv.slice(index + 1));
-      break;
-    }
-
-    if (shouldTreatAsCommandArg(token, index, isReservedSubcommand, isUp, parsed)) {
-      parsed.commandArgs.push(...argv.slice(index));
       break;
     }
 
@@ -134,33 +130,26 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.help = true;
         continue;
       default:
+        if (defaultMode && index === 0 && RESERVED_COMMANDS.has(token)) {
+          parsed.positionals.push(token);
+          continue;
+        }
+
+        if (defaultMode) {
+          parsed.commandArgs.push(token);
+          continue;
+        }
+
+        if (isUp && index > 0) {
+          parsed.commandArgs.push(token);
+          continue;
+        }
+
         parsed.positionals.push(token);
     }
   }
 
   return parsed;
-}
-
-function shouldTreatAsCommandArg(
-  token: string,
-  index: number,
-  isReservedSubcommand: boolean,
-  isUp: boolean,
-  parsed: ParsedArgs,
-): boolean {
-  if (token.startsWith("-") || parsed.passthrough) {
-    return false;
-  }
-
-  if (!isReservedSubcommand) {
-    return index > 0 || (index === 0 && !RESERVED_COMMANDS.has(token));
-  }
-
-  if (isUp) {
-    return index > 0;
-  }
-
-  return false;
 }
 
 function requireValue(argv: string[], index: number, flag: string): string {

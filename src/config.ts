@@ -246,6 +246,7 @@ export async function resolveProjectConfig(options: {
   cacheStore: CacheStore;
 }): Promise<ResolvedConfig | null> {
   const { cacheStore, cwd, explicitConfigPath, useCache } = options;
+  const walkedDirectories = walkUpDirectories(cwd);
 
   if (explicitConfigPath) {
     const resolvedPath = path.resolve(cwd, explicitConfigPath);
@@ -261,13 +262,29 @@ export async function resolveProjectConfig(options: {
     const cachedConfig = await cacheStore.getConfigLookup(cwd);
 
     if (cachedConfig) {
-      const parsed = await parseConfigAt(cachedConfig.configPath);
-      parsed.cacheHit = true;
-      return parsed;
+      const cachedDirectory = path.dirname(cachedConfig.configPath);
+      let shouldUseCache = true;
+
+      for (const directory of walkedDirectories) {
+        if (directory === cachedDirectory) {
+          break;
+        }
+
+        if (await findConfigPath(directory)) {
+          shouldUseCache = false;
+          break;
+        }
+      }
+
+      if (shouldUseCache) {
+        const parsed = await parseConfigAt(cachedConfig.configPath);
+        parsed.cacheHit = true;
+        return parsed;
+      }
     }
   }
 
-  for (const directory of walkUpDirectories(cwd)) {
+  for (const directory of walkedDirectories) {
     const candidatePath = await findConfigPath(directory);
 
     if (!candidatePath) {

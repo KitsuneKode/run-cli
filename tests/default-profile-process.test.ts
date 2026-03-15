@@ -125,6 +125,11 @@ describe("default profile and managed process workflow", () => {
         });
         expect(stopResult.stdout).toContain(`stopped ${startedName}`);
 
+        const restartResult = await captureConsole(async () => {
+          await run(["restart", startedName]);
+        });
+        expect(restartResult.stdout).toContain(`restarted ${startedName}`);
+
         const stoppedPsResult = await captureConsole(async () => {
           await run(["ps", "--json"]);
         });
@@ -135,8 +140,15 @@ describe("default profile and managed process workflow", () => {
         }>;
         const stoppedRecord = stoppedProcesses.find((entry) => entry.name === startedName);
 
-        expect(stoppedRecord?.status).toBe("stopped");
+        expect(stoppedRecord?.status).toBe("running");
         expect(await pathExists(stoppedRecord?.logPath ?? "")).toBe(true);
+        expect((stoppedRecord as { commandArgs?: string[] } | undefined)?.commandArgs).toContain(
+          "--flag",
+        );
+
+        await captureConsole(async () => {
+          await run(["stop", startedName]);
+        });
       },
     );
   });

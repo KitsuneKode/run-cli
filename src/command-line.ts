@@ -1,3 +1,4 @@
+import { blue, bold, dim } from "./output.ts";
 import type { ResolvedCommand, ResolvedProfile } from "./types.ts";
 
 function shellQuote(value: string): string {
@@ -23,7 +24,7 @@ export function resolveCommandLine(
 }
 
 export function renderMinimalBanner(commandLine: ResolvedCommand): string {
-  return `run  ${commandLine.shellCommand}`;
+  return `${bold(blue("run"))} ${dim("//")} ${commandLine.shellCommand}`;
 }
 
 export function renderVerboseBanner(input: {

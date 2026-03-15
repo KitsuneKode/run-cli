@@ -128,6 +128,11 @@ Compatibility note:
 - `--verbose` / `-v` adds profile, cwd, config path, and cache details
 - `--dry-run` prints the exact final shell command without spawning the child process
 
+## Validation and diagnostics
+
+- `run config validate` confirms that the nearest project config parses and resolves
+- `run doctor --json` prints a machine-readable resolution report for scripts, editors, and agents
+
 ## Managed process commands
 
 Managed processes are started with `run up` and inspected with:

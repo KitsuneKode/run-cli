@@ -55,6 +55,18 @@ describe("support modules", () => {
     expect(parsed.passthrough).toBe(true);
   });
 
+  test("keeps parsing flags before passthrough in default and up modes", () => {
+    const runParsed = parseArgs(["-p", "dev", "--dry-run", "foo"]);
+    const upParsed = parseArgs(["up", "-p", "worker", "--name", "jobs", "foo"]);
+
+    expect(runParsed.profileName).toBe("dev");
+    expect(runParsed.dryRun).toBe(true);
+    expect(runParsed.commandArgs).toEqual(["foo"]);
+    expect(upParsed.profileName).toBe("worker");
+    expect(upParsed.name).toBe("jobs");
+    expect(upParsed.commandArgs).toEqual(["foo"]);
+  });
+
   test("rejects malformed cli flags", () => {
     expect(() => parseArgs(["--cwd"])).toThrow("--cwd requires a value.");
     expect(() => parseArgs(["init", "--add-profile", "dev"])).toThrow(

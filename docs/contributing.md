@@ -51,4 +51,5 @@ Before a release or tag:
 1. `bun run check`
 2. `bun run build`
 3. confirm `run help` and `run doctor` still read clearly
-4. confirm `bun link` exposes both `run` and `runx`
+4. confirm `run doctor --json` and `run config validate` still behave deterministically
+5. confirm `bun link` exposes both `run` and `runx`

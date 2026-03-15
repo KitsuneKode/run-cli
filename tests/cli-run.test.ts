@@ -61,7 +61,7 @@ describe("direct cli run()", () => {
           await run(["--cwd", projectRoot]);
         });
 
-        expect(result.stdout).toContain("run  echo legacy-run");
+        expect(result.stdout).toContain("run // echo legacy-run");
         expect(result.stdout).toContain("Rename it to .run.toml");
       },
     );
@@ -91,6 +91,41 @@ describe("direct cli run()", () => {
         expect(result.stdout).toContain("ecosystem=python");
       },
     );
+  });
+
+  test("renders doctor json output", async () => {
+    const projectRoot = await createTempDir("run-cli-doctor-json-");
+
+    await writeTextFile(path.join(projectRoot, "main.py"), "print('hello')\n");
+
+    await withEnv(
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+      async () => {
+        const result = await captureConsole(async () => {
+          await run(["doctor", "--json", "--cwd", projectRoot, "--no-cache"]);
+        });
+
+        const parsed = JSON.parse(result.stdout);
+        expect(parsed.cwd).toBe(projectRoot);
+        expect(parsed.detectedProject.root).toBe(projectRoot);
+      },
+    );
+  });
+
+  test("validates config through config validate", async () => {
+    const projectRoot = await createTempDir("run-cli-validate-");
+    const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
+
+    await writeTextFile(configPath, ["version = 1", 'command = "echo ok"'].join("\n"));
+
+    const result = await captureConsole(async () => {
+      await run(["config", "validate", "--cwd", projectRoot]);
+    });
+
+    expect(result.stdout).toContain(`valid ${configPath}`);
   });
 
   test("prints completion scripts for zsh and bash", async () => {

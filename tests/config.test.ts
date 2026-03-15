@@ -88,4 +88,37 @@ describe("config resolution", () => {
     expect(resolvedConfig?.sourcePath).toBe(path.join(projectRoot, LEGACY_CONFIG_FILE_NAME));
     expect(resolvedConfig?.isLegacyPath).toBe(true);
   });
+
+  test("prefers a newly added nearer config even after a cached ancestor lookup", async () => {
+    const projectRoot = await createTempProject();
+    const nestedDir = path.join(projectRoot, "apps", "web", "src");
+    const nearerDir = path.join(projectRoot, "apps", "web");
+    const cacheStore = new CacheStore(path.join(projectRoot, ".cache", "run-cache.json"));
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo root"'].join("\n"),
+    );
+    await writeTextFile(path.join(nestedDir, "placeholder.txt"), "ok\n");
+
+    const firstResolved = await resolveProjectConfig({
+      cwd: nestedDir,
+      useCache: true,
+      cacheStore,
+    });
+    expect(firstResolved?.sourcePath).toBe(path.join(projectRoot, CONFIG_FILE_NAME));
+
+    await writeTextFile(
+      path.join(nearerDir, CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo nearer"'].join("\n"),
+    );
+
+    const secondResolved = await resolveProjectConfig({
+      cwd: nestedDir,
+      useCache: true,
+      cacheStore,
+    });
+
+    expect(secondResolved?.sourcePath).toBe(path.join(nearerDir, CONFIG_FILE_NAME));
+  });
 });

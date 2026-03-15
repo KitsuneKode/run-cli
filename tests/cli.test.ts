@@ -101,6 +101,64 @@ describe("cli integration", () => {
     expect(result.stderr).toContain("run -p dev");
   });
 
+  test("shows a migration error for old positional profile usage with extra args", async () => {
+    const projectRoot = await createTempProject("run-cli-migrate-extra");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      [
+        "version = 1",
+        'default_profile = "default"',
+        "",
+        "[profiles.default]",
+        'command = "echo stable"',
+        "",
+        "[profiles.dev]",
+        'command = "echo dev"',
+      ].join("\n"),
+    );
+
+    const result = await runCli(["--cwd", projectRoot, "dev", "--watch"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("positional profiles were removed");
+    expect(result.stderr).toContain("run -p dev");
+    expect(result.stderr).toContain("run -- dev --watch");
+  });
+
+  test("continues parsing flags before passthrough boundary", async () => {
+    const projectRoot = await createTempProject("run-cli-flags");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      [
+        "version = 1",
+        'default_profile = "default"',
+        "",
+        "[profiles.default]",
+        'command = "echo stable"',
+        "",
+        "[profiles.dev]",
+        'command = "echo dev"',
+      ].join("\n"),
+    );
+
+    const result = await runCli(
+      ["--cwd", projectRoot, "-p", "dev", "--dry-run", "foo"],
+      projectRoot,
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("echo dev 'foo'");
+  });
+
   test("suggests init when no config exists", async () => {
     const projectRoot = await createTempProject("run-cli-empty");
 

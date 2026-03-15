@@ -55,6 +55,14 @@ The CLI includes a small migration layer for trust and clarity:
 
 Migration hints are intentionally short and contextual.
 
+## Diagnostics surfaces
+
+The CLI keeps both human and agent-facing diagnostics deterministic:
+
+- `run doctor` is the human-readable report
+- `run doctor --json` is the machine-readable report
+- `run config validate` is the cheapest validation path for config-only checks
+
 ## Detection heuristics
 
 The detector walks upward until it finds a directory with recognizable project markers. Suggestions are then ranked roughly like this:

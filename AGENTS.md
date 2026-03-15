@@ -31,6 +31,7 @@ When changing CLI semantics, command output, config lookup, or profile behavior,
 - Put richer execution detail behind `--verbose`.
 - Reuse the shared command-construction path for foreground runs, managed runs, dry-run output, inspect output, and dashboard-adjacent surfaces.
 - Preserve deterministic text output so humans and agents can reason about the CLI cheaply.
+- When adding diagnostics, keep a stable machine-readable path (`--json`) where practical.
 
 ## Migration guidance
 

@@ -9,6 +9,7 @@ Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means r
 - `run` starts the default project command
 - `run -p dev` starts the `dev` profile explicitly
 - `run -- --watch` forwards args to the default command
+- `run doctor --json` exposes machine-readable diagnostics
 - `run up` starts a managed background process
 - `run ps` and `run dashboard` show what is running across projects
 - `run init` writes a local config from detected project signals
@@ -98,6 +99,7 @@ command = "bun --hot index.ts"
 run [args...] [-p <profile>] [-v] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
 run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]
 run completion <zsh|bash>
+run doctor [--json]
 run profiles [--json]
 run up [args...] [-p <profile>] [--name <name>]
 run ps [--json]
@@ -108,8 +110,7 @@ run stop <name|id>
 run restart <name|id>
 run kill <name|id>
 run ports [--json]
-run config <view|path|edit> [--global]
-run doctor
+run config <view|path|edit|validate> [--global]
 run help
 ```
 
@@ -144,6 +145,7 @@ Inspect config:
 ```bash
 run config path
 run config view
+run config validate
 run config edit
 run config path --global
 ```

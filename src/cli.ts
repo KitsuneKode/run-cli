@@ -14,7 +14,7 @@ import {
 } from "./config.ts";
 import { CONFIG_FILE_NAME, FALLBACK_SHELL, RESERVED_COMMANDS } from "./constants.ts";
 import { detectProject } from "./detect.ts";
-import { renderDoctorReport } from "./doctor.ts";
+import { doctorReportData, renderDoctorReport } from "./doctor.ts";
 import { getGlobalConfigPath } from "./env-paths.ts";
 import { runResolvedProfile } from "./exec.ts";
 import { pathExists, readTextFile, writeTextFile } from "./fs.ts";
@@ -36,10 +36,7 @@ import type { GlobalConfig, ManagedProcessSnapshot, ResolvedConfig } from "./typ
 export async function run(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseArgs(argv);
   const cacheStore = new CacheStore();
-  const processRegistry = new ProcessRegistry();
   const cwd = path.resolve(parsed.cwd ?? process.cwd());
-  const globalConfig = await readGlobalConfig();
-  const useCache = !parsed.noCache && globalConfig.cache;
   const [firstPositional, secondPositional] = parsed.positionals;
 
   if (parsed.help || firstPositional === "help") {
@@ -49,7 +46,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
 
   try {
     switch (firstPositional) {
-      case "init":
+      case "init": {
+        const globalConfig = await readGlobalConfig();
+        const useCache = !parsed.noCache && globalConfig.cache;
         await handleInitCommand({
           cwd,
           useCache,
@@ -62,7 +61,10 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           usedDeprecatedProfileFlag: parsed.deprecatedInitProfileFlagUsed,
         });
         return;
-      case "config":
+      }
+      case "config": {
+        const globalConfig = await readGlobalConfig();
+        const useCache = !parsed.noCache && globalConfig.cache;
         await handleConfigCommand({
           action: secondPositional,
           cwd,
@@ -72,19 +74,26 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           useCache,
         });
         return;
+      }
       case "completion":
         handleCompletionCommand(secondPositional);
         return;
-      case "doctor":
+      case "doctor": {
+        const globalConfig = await readGlobalConfig();
+        const useCache = !parsed.noCache && globalConfig.cache;
         await handleDoctorCommand({
           cwd,
           explicitConfigPath: parsed.configPath,
           cacheStore,
           globalConfig,
           useCache,
+          json: parsed.json,
         });
         return;
-      case "profiles":
+      }
+      case "profiles": {
+        const globalConfig = await readGlobalConfig();
+        const useCache = !parsed.noCache && globalConfig.cache;
         await handleProfilesCommand({
           cwd,
           explicitConfigPath: parsed.configPath,
@@ -93,7 +102,10 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           json: parsed.json,
         });
         return;
-      case "up":
+      }
+      case "up": {
+        const globalConfig = await readGlobalConfig();
+        const useCache = !parsed.noCache && globalConfig.cache;
         await handleUpCommand({
           cwd,
           profileName: parsed.profileName,
@@ -105,22 +117,23 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           name: parsed.name,
         });
         return;
+      }
       case "ps":
         await handlePsCommand({
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           json: parsed.json,
         });
         return;
       case "dashboard":
         await handleDashboardCommand({
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
         });
         return;
       case "inspect":
         await requireIdentifier("inspect", secondPositional);
         await handleInspectCommand({
           identifier: secondPositional ?? "",
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           json: parsed.json,
         });
         return;
@@ -128,7 +141,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         await requireIdentifier("logs", secondPositional);
         await handleLogsCommand({
           identifier: secondPositional ?? "",
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           follow: parsed.follow,
           lines: parsed.lines ?? 40,
         });
@@ -137,7 +150,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         await requireIdentifier("stop", secondPositional);
         await handleSignalCommand({
           identifier: secondPositional ?? "",
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           signal: "SIGTERM",
           nextStatus: "stopped",
           verb: "stopped",
@@ -147,7 +160,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         await requireIdentifier("kill", secondPositional);
         await handleSignalCommand({
           identifier: secondPositional ?? "",
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           signal: "SIGKILL",
           nextStatus: "exited",
           verb: "killed",
@@ -155,15 +168,18 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         return;
       case "restart":
         await requireIdentifier("restart", secondPositional);
-        await handleRestartCommand({
-          identifier: secondPositional ?? "",
-          registry: processRegistry,
-          globalConfig,
-        });
-        return;
+        {
+          const globalConfig = await readGlobalConfig();
+          await handleRestartCommand({
+            identifier: secondPositional ?? "",
+            registry: new ProcessRegistry(),
+            globalConfig,
+          });
+          return;
+        }
       case "ports":
         await handlePortsCommand({
-          registry: processRegistry,
+          registry: new ProcessRegistry(),
           json: parsed.json,
         });
         return;
@@ -172,18 +188,21 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           throw new Error(`Unknown command: ${firstPositional}`);
         }
 
-        await handleRunCommand({
-          cwd,
-          rawArgv: argv,
-          profileName: parsed.profileName,
-          commandArgs: parsed.commandArgs,
-          explicitConfigPath: parsed.configPath,
-          cacheStore,
-          globalConfig,
-          useCache,
-          dryRun: parsed.dryRun,
-          verbose: parsed.verbose,
-        });
+        {
+          const globalConfig = await readGlobalConfig();
+          const useCache = !parsed.noCache && globalConfig.cache;
+          await handleRunCommand({
+            cwd,
+            profileName: parsed.profileName,
+            commandArgs: parsed.commandArgs,
+            explicitConfigPath: parsed.configPath,
+            cacheStore,
+            globalConfig,
+            useCache,
+            dryRun: parsed.dryRun,
+            verbose: parsed.verbose,
+          });
+        }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -242,6 +261,7 @@ async function handleDoctorCommand(options: {
   cacheStore: CacheStore;
   globalConfig: GlobalConfig;
   useCache: boolean;
+  json: boolean;
 }): Promise<void> {
   const projectConfig = await resolveProjectConfig({
     cwd: options.cwd,
@@ -255,14 +275,29 @@ async function handleDoctorCommand(options: {
     cacheStore: options.cacheStore,
   });
 
-  info(
-    renderDoctorReport({
-      cwd: options.cwd,
-      globalConfig: options.globalConfig,
-      projectConfig,
-      detectedProject,
-    }),
-  );
+  if (options.json) {
+    info(
+      `${JSON.stringify(
+        doctorReportData({
+          cwd: options.cwd,
+          globalConfig: options.globalConfig,
+          projectConfig,
+          detectedProject,
+        }),
+        null,
+        2,
+      )}\n`,
+    );
+  } else {
+    info(
+      renderDoctorReport({
+        cwd: options.cwd,
+        globalConfig: options.globalConfig,
+        projectConfig,
+        detectedProject,
+      }),
+    );
+  }
 
   if (options.useCache) {
     await options.cacheStore.save();
@@ -284,7 +319,6 @@ function handleCompletionCommand(shell: string | undefined): void {
 
 async function handleRunCommand(options: {
   cwd: string;
-  rawArgv: string[];
   profileName?: string;
   commandArgs: string[];
   explicitConfigPath?: string;
@@ -336,7 +370,6 @@ async function handleRunCommand(options: {
   }
 
   await maybeHandlePositionalProfileMigration({
-    rawArgv: options.rawArgv,
     resolvedConfig,
     profileName: options.profileName,
     commandArgs: options.commandArgs,
@@ -388,12 +421,11 @@ async function handleRunCommand(options: {
 }
 
 async function maybeHandlePositionalProfileMigration(options: {
-  rawArgv: string[];
   resolvedConfig: ResolvedConfig;
   profileName?: string;
   commandArgs: string[];
 }): Promise<void> {
-  if (options.profileName || options.commandArgs.length !== 1) {
+  if (options.profileName || options.commandArgs.length === 0) {
     return;
   }
 
@@ -414,7 +446,7 @@ async function maybeHandlePositionalProfileMigration(options: {
     [
       "positional profiles were removed.",
       `Use: run -p ${matchedProfile.name}`,
-      `To pass \"${matchedProfile.name}\" to the default command, use: run -- ${matchedProfile.name}`,
+      `To pass \"${matchedProfile.name}\" to the default command, use: run -- ${options.commandArgs.join(" ")}`,
     ].join(" "),
   );
 }
@@ -625,8 +657,8 @@ async function handleConfigCommand(options: {
   globalConfig: GlobalConfig;
   useCache: boolean;
 }): Promise<void> {
-  if (!options.action || !["view", "path", "edit"].includes(options.action)) {
-    throw new Error("Usage: run config <view|path|edit> [--global]");
+  if (!options.action || !["view", "path", "edit", "validate"].includes(options.action)) {
+    throw new Error("Usage: run config <view|path|edit|validate> [--global]");
   }
 
   if (options.global) {
@@ -676,6 +708,11 @@ async function handleConfigCommand(options: {
     return;
   }
 
+  if (options.action === "validate") {
+    info(`valid ${resolvedConfig.sourcePath}`);
+    return;
+  }
+
   await openInEditor(resolvedConfig.sourcePath, options.globalConfig);
 
   if (options.useCache) {
@@ -707,11 +744,10 @@ async function requireProcessSnapshot(
   registry: ProcessRegistry,
   identifier: string,
 ): Promise<ManagedProcessSnapshot> {
-  const snapshots = await registry.listSnapshots();
-  const processRecord =
-    snapshots.find((entry) => entry.id === identifier || entry.name === identifier) ?? null;
+  const processRecord = await registry.getSnapshot(identifier);
 
   if (!processRecord) {
+    const snapshots = await registry.listSnapshots();
     const availableNames = snapshots.map((entry) => entry.name).join(", ");
     throw new Error(
       availableNames.length > 0
@@ -766,6 +802,7 @@ Usage:
   run [args...] [-p <profile>] [-v] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
   run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]
   run completion <zsh|bash>
+  run doctor [--json]
   run profiles [--json]
   run up [args...] [-p <profile>] [--name <name>]
   run ps [--json]
@@ -776,8 +813,7 @@ Usage:
   run restart <name|id>
   run kill <name|id>
   run ports [--json]
-  run config <view|path|edit> [--global]
-  run doctor
+  run config <view|path|edit|validate> [--global]
   run help
 
 Examples:

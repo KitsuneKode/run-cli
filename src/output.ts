@@ -15,6 +15,10 @@ export function cyan(value: string): string {
   return paint("36", value);
 }
 
+export function blue(value: string): string {
+  return paint("34", value);
+}
+
 export function green(value: string): string {
   return paint("32", value);
 }
