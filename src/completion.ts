@@ -63,7 +63,7 @@ export function renderZshCompletion(): string {
     "        _files && ret=0",
     "        return ret",
     "      fi",
-    '      case "${words[2]}" in',
+    '      case "${line[1]}" in',
     "        init)",
     "          _arguments -s -S \\",
     '            "--yes[Skip prompts and accept detected defaults]" \\',
