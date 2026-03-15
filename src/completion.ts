@@ -61,7 +61,7 @@ export function renderZshCompletion(): string {
     "    args)",
     "      if (( ${words[(I)--]} )); then",
     "        _files && ret=0",
-    "        ;;",
+    "        return ret",
     "      fi",
     '      case "${words[2]}" in',
     "        init)",
