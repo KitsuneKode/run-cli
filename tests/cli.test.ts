@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { CONFIG_FILE_NAME } from "../src/constants.ts";
+import { CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME } from "../src/constants.ts";
 import { writeTextFile } from "../src/fs.ts";
 
 async function createTempProject(prefix: string): Promise<string> {
@@ -55,6 +55,50 @@ describe("cli integration", () => {
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("echo from-root");
+  });
+
+  test("forwards args to the default command and renders a minimal banner", async () => {
+    const projectRoot = await createTempProject("run-cli-args");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo hello"'].join("\n"),
+    );
+
+    const result = await runCli(["--cwd", projectRoot, "--dry-run", "world"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe("echo hello 'world'");
+  });
+
+  test("shows a migration error for old positional profile usage", async () => {
+    const projectRoot = await createTempProject("run-cli-migrate");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      [
+        "version = 1",
+        'default_profile = "default"',
+        "",
+        "[profiles.default]",
+        'command = "echo stable"',
+        "",
+        "[profiles.dev]",
+        'command = "echo dev"',
+      ].join("\n"),
+    );
+
+    const result = await runCli(["--cwd", projectRoot, "dev"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toContain("positional profiles were removed");
+    expect(result.stderr).toContain("run -p dev");
   });
 
   test("suggests init when no config exists", async () => {
@@ -136,5 +180,26 @@ describe("cli integration", () => {
     expect(await Bun.file(path.join(projectRoot, CONFIG_FILE_NAME)).text()).toContain(
       'command = "uv run python main.py"',
     );
+  });
+
+  test("prefers .run.toml over legacy config and shows legacy doctor status", async () => {
+    const projectRoot = await createTempProject("run-cli-legacy");
+
+    await writeTextFile(
+      path.join(projectRoot, LEGACY_CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo legacy"'].join("\n"),
+    );
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo current"'].join("\n"),
+    );
+
+    const result = await runCli(["--cwd", projectRoot, "--dry-run"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+    });
+
+    expect(result.stdout).toContain("echo current");
+    expect(result.stdout).not.toContain("echo legacy");
   });
 });

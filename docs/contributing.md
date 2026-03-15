@@ -40,6 +40,9 @@ When extending the CLI:
 - if you add new config fields, update both validation and docs in the same change
 - keep diagnostics deterministic so they are easy for both humans and agents to parse
 - add tests for both direct module behavior and CLI-level behavior when user-facing output changes
+- if you change CLI semantics, update completions, README, docs, `CLAUDE.md`, and `AGENTS.md` in the same change
+- keep the default run path quiet and polished; move explainers behind explicit flags like `--verbose`
+- preserve one shared command-construction path so dry-run, managed runs, inspect output, and banners never drift
 
 ## Release expectations
 

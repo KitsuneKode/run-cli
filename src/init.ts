@@ -3,7 +3,7 @@ import { createInterface } from "node:readline/promises";
 
 import type { CacheStore } from "./cache.ts";
 import { renderProjectConfig } from "./config.ts";
-import { CONFIG_FILE_NAME } from "./constants.ts";
+import { CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME } from "./constants.ts";
 import { detectProject } from "./detect.ts";
 import { pathExists, writeTextFile } from "./fs.ts";
 import type { DetectionSuggestion, RunConfigFile } from "./types.ts";
@@ -59,9 +59,16 @@ export async function runInit(options: InitOptions): Promise<{
   detected: DetectionSuggestion[];
 }> {
   const configPath = path.join(options.cwd, CONFIG_FILE_NAME);
+  const legacyConfigPath = path.join(options.cwd, LEGACY_CONFIG_FILE_NAME);
 
   if ((await pathExists(configPath)) && !options.force) {
     throw new Error(`${configPath} already exists. Re-run with --force to overwrite it.`);
+  }
+
+  if ((await pathExists(legacyConfigPath)) && !options.force) {
+    throw new Error(
+      `${legacyConfigPath} already exists. Rename it to ${CONFIG_FILE_NAME} or re-run with --force to overwrite it.`,
+    );
   }
 
   const detected = await detectProject({
@@ -208,22 +215,27 @@ export async function runInit(options: InitOptions): Promise<{
       },
     },
   };
+  if (!config.profiles) {
+    config.profiles = {};
+  }
+
+  const profiles = config.profiles;
 
   for (const profile of extraProfiles) {
     if (profile.name === "default") {
-      config.profiles.default = {
+      profiles.default = {
         command: profile.command,
       };
       continue;
     }
 
-    config.profiles[profile.name] = {
+    profiles[profile.name] = {
       command: profile.command,
     };
   }
 
-  if (defaultProfile === "default" && config.profiles.default?.command) {
-    config.command = config.profiles.default.command;
+  if (defaultProfile === "default" && profiles.default?.command) {
+    config.command = profiles.default.command;
   }
 
   await writeTextFile(configPath, renderProjectConfig(config));

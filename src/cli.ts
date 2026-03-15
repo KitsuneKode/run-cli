@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { parseArgs } from "./args.ts";
 import { CacheStore } from "./cache.ts";
+import { renderMinimalBanner, renderVerboseBanner, resolveCommandLine } from "./command-line.ts";
 import { renderBashCompletion, renderZshCompletion } from "./completion.ts";
 import {
   listProfiles,
@@ -23,7 +24,7 @@ import {
   renderManagedProcessDetails,
   renderManagedProcessList,
 } from "./managed-process-view.ts";
-import { info, red, warn } from "./output.ts";
+import { dim, info, red, warn } from "./output.ts";
 import {
   restartManagedProcess,
   signalManagedProcess,
@@ -57,7 +58,8 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           yes: parsed.yes,
           command: parsed.command,
           defaultProfile: parsed.defaultProfile,
-          profiles: parsed.profiles,
+          profiles: parsed.addProfiles,
+          usedDeprecatedProfileFlag: parsed.deprecatedInitProfileFlagUsed,
         });
         return;
       case "config":
@@ -88,12 +90,14 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           explicitConfigPath: parsed.configPath,
           cacheStore,
           useCache,
+          json: parsed.json,
         });
         return;
       case "up":
         await handleUpCommand({
           cwd,
-          profileName: secondPositional,
+          profileName: parsed.profileName,
+          commandArgs: parsed.commandArgs,
           explicitConfigPath: parsed.configPath,
           cacheStore,
           globalConfig,
@@ -115,7 +119,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "inspect":
         await requireIdentifier("inspect", secondPositional);
         await handleInspectCommand({
-          identifier: secondPositional,
+          identifier: secondPositional ?? "",
           registry: processRegistry,
           json: parsed.json,
         });
@@ -123,7 +127,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "logs":
         await requireIdentifier("logs", secondPositional);
         await handleLogsCommand({
-          identifier: secondPositional,
+          identifier: secondPositional ?? "",
           registry: processRegistry,
           follow: parsed.follow,
           lines: parsed.lines ?? 40,
@@ -132,7 +136,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "stop":
         await requireIdentifier("stop", secondPositional);
         await handleSignalCommand({
-          identifier: secondPositional,
+          identifier: secondPositional ?? "",
           registry: processRegistry,
           signal: "SIGTERM",
           nextStatus: "stopped",
@@ -142,7 +146,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "kill":
         await requireIdentifier("kill", secondPositional);
         await handleSignalCommand({
-          identifier: secondPositional,
+          identifier: secondPositional ?? "",
           registry: processRegistry,
           signal: "SIGKILL",
           nextStatus: "exited",
@@ -152,7 +156,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "restart":
         await requireIdentifier("restart", secondPositional);
         await handleRestartCommand({
-          identifier: secondPositional,
+          identifier: secondPositional ?? "",
           registry: processRegistry,
           globalConfig,
         });
@@ -170,12 +174,15 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
 
         await handleRunCommand({
           cwd,
-          profileName: firstPositional,
+          rawArgv: argv,
+          profileName: parsed.profileName,
+          commandArgs: parsed.commandArgs,
           explicitConfigPath: parsed.configPath,
           cacheStore,
           globalConfig,
           useCache,
           dryRun: parsed.dryRun,
+          verbose: parsed.verbose,
         });
     }
   } catch (error) {
@@ -194,6 +201,7 @@ async function handleInitCommand(options: {
   command?: string;
   defaultProfile?: string;
   profiles: Array<{ name: string; command: string }>;
+  usedDeprecatedProfileFlag: boolean;
 }): Promise<void> {
   const result = await runInit({
     cwd: options.cwd,
@@ -207,6 +215,12 @@ async function handleInitCommand(options: {
   });
 
   info(`created ${result.path}`);
+
+  if (options.usedDeprecatedProfileFlag) {
+    info(
+      dim("hint: `run init --profile name=command` is deprecated; use `--add-profile` instead."),
+    );
+  }
 
   if (result.detected.length > 0) {
     info("Detected commands:");
@@ -270,12 +284,15 @@ function handleCompletionCommand(shell: string | undefined): void {
 
 async function handleRunCommand(options: {
   cwd: string;
+  rawArgv: string[];
   profileName?: string;
+  commandArgs: string[];
   explicitConfigPath?: string;
   cacheStore: CacheStore;
   globalConfig: GlobalConfig;
   useCache: boolean;
   dryRun: boolean;
+  verbose: boolean;
 }): Promise<void> {
   const resolvedConfig = await resolveProjectConfig({
     cwd: options.cwd,
@@ -307,8 +324,8 @@ async function handleRunCommand(options: {
       warn("No runnable command could be detected automatically.");
     }
 
-    info(`Run "run init" to choose one of the detected commands or enter your own.`);
-    info(`Run "run init --command '<your command>'" to write a custom command directly.`);
+    info('Run "run init" to choose one of the detected commands or enter your own.');
+    info("Run \"run init --command '<your command>'\" to write a custom command directly.");
 
     if (options.useCache) {
       await options.cacheStore.save();
@@ -318,15 +335,49 @@ async function handleRunCommand(options: {
     return;
   }
 
+  await maybeHandlePositionalProfileMigration({
+    rawArgv: options.rawArgv,
+    resolvedConfig,
+    profileName: options.profileName,
+    commandArgs: options.commandArgs,
+  });
+
   const profile = resolveProfile(resolvedConfig, options.profileName);
-  info(
-    `run ${profile.command} (profile=${profile.name} cwd=${profile.cwd} config=${profile.sourcePath}${
-      resolvedConfig.cacheHit ? " cache" : ""
-    })`,
-  );
+  const commandLine = resolveCommandLine(profile, options.commandArgs);
+
+  if (options.dryRun) {
+    info(commandLine.shellCommand);
+
+    if (options.verbose) {
+      info(dim(`profile=${profile.name} cwd=${profile.cwd} config=${profile.sourcePath}`));
+    }
+  } else {
+    info(renderMinimalBanner(commandLine));
+
+    if (resolvedConfig.isLegacyPath) {
+      info(
+        dim(
+          `hint: using legacy config ${resolvedConfig.sourcePath}. Rename it to ${CONFIG_FILE_NAME}.`,
+        ),
+      );
+    }
+
+    if (options.verbose) {
+      const verboseBanner = renderVerboseBanner({
+        profile,
+        commandLine,
+        cacheHit: resolvedConfig.cacheHit,
+      }).split("\n")[1];
+
+      if (verboseBanner) {
+        info(dim(verboseBanner));
+      }
+    }
+  }
 
   const exitCode = await runResolvedProfile(profile, options.globalConfig, {
     dryRun: options.dryRun,
+    args: options.commandArgs,
   });
 
   if (options.useCache) {
@@ -336,9 +387,42 @@ async function handleRunCommand(options: {
   process.exitCode = exitCode;
 }
 
+async function maybeHandlePositionalProfileMigration(options: {
+  rawArgv: string[];
+  resolvedConfig: ResolvedConfig;
+  profileName?: string;
+  commandArgs: string[];
+}): Promise<void> {
+  if (options.profileName || options.commandArgs.length !== 1) {
+    return;
+  }
+
+  const firstArg = options.commandArgs[0];
+
+  if (!firstArg || firstArg === "--") {
+    return;
+  }
+
+  const profiles = listProfiles(options.resolvedConfig.config);
+  const matchedProfile = profiles.find((profile) => profile.name === firstArg);
+
+  if (!matchedProfile) {
+    return;
+  }
+
+  throw new Error(
+    [
+      "positional profiles were removed.",
+      `Use: run -p ${matchedProfile.name}`,
+      `To pass \"${matchedProfile.name}\" to the default command, use: run -- ${matchedProfile.name}`,
+    ].join(" "),
+  );
+}
+
 async function handleUpCommand(options: {
   cwd: string;
   profileName?: string;
+  commandArgs: string[];
   explicitConfigPath?: string;
   cacheStore: CacheStore;
   globalConfig: GlobalConfig;
@@ -355,16 +439,20 @@ async function handleUpCommand(options: {
   const registry = new ProcessRegistry();
   const processRecord = await startManagedProcess({
     profile,
+    args: options.commandArgs,
     globalConfig: options.globalConfig,
     registry,
     nameOverride: options.name,
   });
 
   info(`started ${processRecord.name}`);
-  info(`  pid: ${processRecord.pid}`);
-  info(`  profile: ${processRecord.profile}`);
   info(`  command: ${processRecord.command}`);
   info(`  log: ${processRecord.logPath}`);
+  info(
+    dim(
+      `  next: run logs ${processRecord.name} --follow | run inspect ${processRecord.name} | run ps`,
+    ),
+  );
 }
 
 async function handlePsCommand(options: {
@@ -439,6 +527,7 @@ async function handleProfilesCommand(options: {
   explicitConfigPath?: string;
   cacheStore: CacheStore;
   useCache: boolean;
+  json: boolean;
 }): Promise<void> {
   const resolvedConfig = await requireResolvedConfig({
     cwd: options.cwd,
@@ -447,6 +536,11 @@ async function handleProfilesCommand(options: {
     useCache: options.useCache,
   });
   const profiles = listProfiles(resolvedConfig.config);
+
+  if (options.json) {
+    info(`${JSON.stringify(profiles, null, 2)}\n`);
+    return;
+  }
 
   for (const profile of profiles) {
     info(
@@ -618,7 +712,12 @@ async function requireProcessSnapshot(
     snapshots.find((entry) => entry.id === identifier || entry.name === identifier) ?? null;
 
   if (!processRecord) {
-    throw new Error(`Managed process "${identifier}" was not found.`);
+    const availableNames = snapshots.map((entry) => entry.name).join(", ");
+    throw new Error(
+      availableNames.length > 0
+        ? `Managed process "${identifier}" was not found. Available: ${availableNames}`
+        : `Managed process "${identifier}" was not found.`,
+    );
   }
 
   return processRecord;
@@ -664,11 +763,11 @@ function printHelp(): void {
   info(`run - fast project launcher and lightweight local process manager
 
 Usage:
-  run [profile] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
-  run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--profile <name=command>]
+  run [args...] [-p <profile>] [-v] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
+  run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]
   run completion <zsh|bash>
-  run profiles
-  run up [profile] [--name <name>]
+  run profiles [--json]
+  run up [args...] [-p <profile>] [--name <name>]
   run ps [--json]
   run dashboard
   run inspect <name|id> [--json]
@@ -681,9 +780,18 @@ Usage:
   run doctor
   run help
 
+Examples:
+  run
+  run -- --watch
+  run -p dev -- --port 3000
+  run up -p worker
+  run init --yes --add-profile dev="bun --hot index.ts"
+
 Notes:
   - The nearest ${CONFIG_FILE_NAME} wins.
   - Plain "run" executes the effective default profile for the project.
+  - Profiles are explicit: use "run -p <profile>".
+  - Use "--" to pass flags through to the underlying command.
   - "run completion" prints shell completion scripts for Bash or Zsh.
   - "run up" starts a managed background process with logs, pid, uptime, memory, and ports.
   - "run dashboard" shows the current managed process cluster in one place.`);

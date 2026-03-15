@@ -1,10 +1,12 @@
 import { spawn } from "node:child_process";
 
+import { resolveCommandLine } from "./command-line.ts";
 import { FALLBACK_SHELL } from "./constants.ts";
 import type { GlobalConfig, ResolvedProfile } from "./types.ts";
 
 export interface ExecutionOptions {
   dryRun: boolean;
+  args?: string[];
 }
 
 export async function runResolvedProfile(
@@ -17,9 +19,10 @@ export async function runResolvedProfile(
   }
 
   const shell = globalConfig.shell ?? process.env.SHELL ?? FALLBACK_SHELL;
+  const commandLine = resolveCommandLine(profile, options.args ?? []);
 
   return await new Promise<number>((resolve, reject) => {
-    const child = spawn(shell, ["-lc", profile.command], {
+    const child = spawn(shell, ["-lc", commandLine.shellCommand], {
       cwd: profile.cwd,
       stdio: "inherit",
       env: {

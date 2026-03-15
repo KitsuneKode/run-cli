@@ -4,6 +4,8 @@ import type { CacheStore } from "./cache.ts";
 import {
   CONFIG_FILE_NAME,
   GLOBAL_CONFIG_VERSION,
+  LEGACY_CONFIG_FILE_NAME,
+  PROJECT_CONFIG_FILE_NAMES,
   PROJECT_CONFIG_VERSION,
   RESERVED_COMMANDS,
 } from "./constants.ts";
@@ -115,7 +117,7 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         throw new Error(`${sourcePath} profiles.${profileName} must be a TOML table.`);
       }
 
-      const profile: Partial<ResolvedProfile> & {
+      const profile: {
         command?: string;
         cwd?: string;
         env?: EnvMap;
@@ -233,6 +235,7 @@ async function parseConfigAt(sourcePath: string): Promise<ResolvedConfig> {
     sourcePath,
     configDir,
     cacheHit: false,
+    isLegacyPath: path.basename(sourcePath) === LEGACY_CONFIG_FILE_NAME,
   };
 }
 
@@ -265,9 +268,9 @@ export async function resolveProjectConfig(options: {
   }
 
   for (const directory of walkUpDirectories(cwd)) {
-    const candidatePath = path.join(directory, CONFIG_FILE_NAME);
+    const candidatePath = await findConfigPath(directory);
 
-    if (!(await pathExists(candidatePath))) {
+    if (!candidatePath) {
       continue;
     }
 
@@ -278,6 +281,18 @@ export async function resolveProjectConfig(options: {
     }
 
     return parsed;
+  }
+
+  return null;
+}
+
+async function findConfigPath(directory: string): Promise<string | null> {
+  for (const fileName of PROJECT_CONFIG_FILE_NAMES) {
+    const candidatePath = path.join(directory, fileName);
+
+    if (await pathExists(candidatePath)) {
+      return candidatePath;
+    }
   }
 
   return null;

@@ -51,7 +51,7 @@ export function renderManagedDashboard(processes: ManagedProcessSnapshot[]): str
     "",
     renderManagedProcessList(processes).trimEnd(),
     "",
-    "Manage with: run inspect <name>, run logs <name>, run stop <name>, run restart <name>, run kill <name>",
+    "Next: run inspect <name> | run logs <name> --follow | run stop <name> | run restart <name>",
     "",
   ].join("\n");
 }
@@ -66,6 +66,8 @@ export function renderManagedProcessDetails(processRecord: ManagedProcessSnapsho
     `uptime: ${formatDuration(processRecord.uptimeMs)}`,
     `memory: ${formatMemory(processRecord.memoryRssKb)}`,
     `ports: ${processRecord.ports.length > 0 ? processRecord.ports.join(", ") : "-"}`,
+    `args: ${processRecord.commandArgs.length > 0 ? processRecord.commandArgs.join(" ") : "-"}`,
+    `base command: ${processRecord.baseCommand}`,
     `command: ${processRecord.command}`,
     `cwd: ${processRecord.cwd}`,
     `project root: ${processRecord.projectRoot}`,

@@ -43,6 +43,8 @@ export async function captureConsole(
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalError = console.error;
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+  const originalStderrWrite = process.stderr.write.bind(process.stderr);
 
   console.log = (...args: unknown[]) => {
     stdoutMessages.push(args.map(String).join(" "));
@@ -53,6 +55,14 @@ export async function captureConsole(
   console.error = (...args: unknown[]) => {
     stderrMessages.push(args.map(String).join(" "));
   };
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    stdoutMessages.push(String(chunk));
+    return true;
+  }) as typeof process.stdout.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    stderrMessages.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
   process.exitCode = 0;
 
   try {
@@ -67,6 +77,8 @@ export async function captureConsole(
     console.log = originalLog;
     console.warn = originalWarn;
     console.error = originalError;
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
     process.exitCode = 0;
   }
 }

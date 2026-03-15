@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 
+import { resolveCommandLine } from "./command-line.ts";
 import { FALLBACK_SHELL } from "./constants.ts";
 import { isProcessRunning } from "./process-metrics.ts";
 import type { ProcessRegistry } from "./process-registry.ts";
@@ -44,6 +45,7 @@ export async function startManagedProcess(options: {
   registry: ProcessRegistry;
   nameOverride?: string;
   existingProcess?: ManagedProcessRecord;
+  args?: string[];
 }): Promise<ManagedProcessRecord> {
   const shell = effectiveShell(options.globalConfig);
   const projectName = await detectProjectName(options.profile.configDir);
@@ -55,11 +57,12 @@ export async function startManagedProcess(options: {
     ? baseName
     : await createUniqueName(options.registry, baseName);
   const logPath = options.existingProcess?.logPath ?? options.registry.createLogPath(processName);
+  const commandLine = resolveCommandLine(options.profile, options.args ?? []);
   mkdirSync(options.registry.logsDirPath, { recursive: true });
   const stdoutFd = openSync(logPath, "a");
   const stderrFd = openSync(logPath, "a");
 
-  const child = spawn(shell, ["-lc", `exec ${options.profile.command}`], {
+  const child = spawn(shell, ["-lc", `exec ${commandLine.shellCommand}`], {
     cwd: options.profile.cwd,
     detached: true,
     stdio: ["ignore", stdoutFd, stderrFd],
@@ -79,7 +82,9 @@ export async function startManagedProcess(options: {
     projectRoot: options.profile.configDir,
     configPath: options.profile.sourcePath,
     profile: options.profile.name,
-    command: options.profile.command,
+    baseCommand: options.profile.command,
+    commandArgs: options.args ?? [],
+    command: commandLine.shellCommand,
     cwd: options.profile.cwd,
     pid: child.pid ?? -1,
     shell,
@@ -156,7 +161,7 @@ export async function restartManagedProcess(
 
   const profile: ResolvedProfile = {
     name: existingProcess.profile,
-    command: existingProcess.command,
+    command: existingProcess.baseCommand,
     cwd: existingProcess.cwd,
     env: existingProcess.env,
     sourcePath: existingProcess.configPath,

@@ -19,7 +19,7 @@ import { runInit } from "../src/init.ts";
 import { createTempDir, withEnv } from "./helpers.ts";
 
 describe("support modules", () => {
-  test("parses flags and profile specs", () => {
+  test("parses init flags and deprecated init profile specs", () => {
     const parsed = parseArgs([
       "init",
       "--cwd",
@@ -35,20 +35,30 @@ describe("support modules", () => {
     expect(parsed.positionals).toEqual(["init"]);
     expect(parsed.cwd).toBe("/tmp/project");
     expect(parsed.command).toBe("python main.py");
-    expect(parsed.profiles).toEqual([
+    expect(parsed.addProfiles).toEqual([
       {
         name: "dev",
         command: "uv run python main.py",
       },
     ]);
+    expect(parsed.deprecatedInitProfileFlagUsed).toBe(true);
     expect(parsed.yes).toBe(true);
     expect(parsed.force).toBe(true);
   });
 
+  test("parses run args, profile selection, verbose mode, and passthrough", () => {
+    const parsed = parseArgs(["-p", "dev", "--verbose", "--", "--watch", "3000"]);
+
+    expect(parsed.profileName).toBe("dev");
+    expect(parsed.verbose).toBe(true);
+    expect(parsed.commandArgs).toEqual(["--watch", "3000"]);
+    expect(parsed.passthrough).toBe(true);
+  });
+
   test("rejects malformed cli flags", () => {
     expect(() => parseArgs(["--cwd"])).toThrow("--cwd requires a value.");
-    expect(() => parseArgs(["init", "--profile", "dev"])).toThrow(
-      'Invalid profile "dev". Use --profile name=command.',
+    expect(() => parseArgs(["init", "--add-profile", "dev"])).toThrow(
+      'Invalid profile "dev". Use --add-profile name=command.',
     );
   });
 
@@ -91,7 +101,7 @@ describe("support modules", () => {
   test("renders and reads project and global config content", async () => {
     const rootDir = await createTempDir("run-cli-config-");
     const cacheStore = new CacheStore(path.join(rootDir, ".cache", "run-cache.json"));
-    const projectConfigPath = path.join(rootDir, ".run.config.toml");
+    const projectConfigPath = path.join(rootDir, ".run.toml");
 
     await writeTextFile(
       projectConfigPath,

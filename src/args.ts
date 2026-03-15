@@ -16,7 +16,12 @@ export interface ParsedArgs {
   json: boolean;
   follow: boolean;
   lines?: number;
-  profiles: Array<{ name: string; command: string }>;
+  addProfiles: Array<{ name: string; command: string }>;
+  profileName?: string;
+  commandArgs: string[];
+  verbose: boolean;
+  passthrough: boolean;
+  deprecatedInitProfileFlagUsed: boolean;
 }
 
 export function parseArgs(argv: string[]): ParsedArgs {
@@ -30,11 +35,35 @@ export function parseArgs(argv: string[]): ParsedArgs {
     yes: false,
     json: false,
     follow: false,
-    profiles: [],
+    addProfiles: [],
+    commandArgs: [],
+    verbose: false,
+    passthrough: false,
+    deprecatedInitProfileFlagUsed: false,
   };
+
+  const subcommand = argv[0];
+  const isInit = subcommand === "init";
+  const isUp = subcommand === "up";
+  const isReservedSubcommand = RESERVED_COMMANDS.has(subcommand ?? "");
 
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
+
+    if (token === undefined) {
+      break;
+    }
+
+    if (token === "--") {
+      parsed.passthrough = true;
+      parsed.commandArgs.push(...argv.slice(index + 1));
+      break;
+    }
+
+    if (shouldTreatAsCommandArg(token, index, isReservedSubcommand, isUp, parsed)) {
+      parsed.commandArgs.push(...argv.slice(index));
+      break;
+    }
 
     switch (token) {
       case "--config":
@@ -49,8 +78,23 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--default-profile":
         parsed.defaultProfile = requireValue(argv, ++index, token);
         continue;
-      case "--profile":
-        parsed.profiles.push(parseProfileValue(requireValue(argv, ++index, token)));
+      case "--add-profile":
+        parsed.addProfiles.push(parseProfileValue(requireValue(argv, ++index, token), token));
+        continue;
+      case "--profile": {
+        const value = requireValue(argv, ++index, token);
+
+        if (isInit && value.includes("=")) {
+          parsed.addProfiles.push(parseProfileValue(value, token));
+          parsed.deprecatedInitProfileFlagUsed = true;
+          continue;
+        }
+
+        parsed.profileName = value;
+        continue;
+      }
+      case "-p":
+        parsed.profileName = requireValue(argv, ++index, token);
         continue;
       case "--name":
         parsed.name = requireValue(argv, ++index, token);
@@ -65,6 +109,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
         parsed.noCache = true;
         continue;
       case "--json":
+      case "-j":
         parsed.json = true;
         continue;
       case "--follow":
@@ -80,6 +125,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--yes":
         parsed.yes = true;
         continue;
+      case "--verbose":
+      case "-v":
+        parsed.verbose = true;
+        continue;
       case "--help":
       case "-h":
         parsed.help = true;
@@ -92,10 +141,32 @@ export function parseArgs(argv: string[]): ParsedArgs {
   return parsed;
 }
 
+function shouldTreatAsCommandArg(
+  token: string,
+  index: number,
+  isReservedSubcommand: boolean,
+  isUp: boolean,
+  parsed: ParsedArgs,
+): boolean {
+  if (token.startsWith("-") || parsed.passthrough) {
+    return false;
+  }
+
+  if (!isReservedSubcommand) {
+    return index > 0 || (index === 0 && !RESERVED_COMMANDS.has(token));
+  }
+
+  if (isUp) {
+    return index > 0;
+  }
+
+  return false;
+}
+
 function requireValue(argv: string[], index: number, flag: string): string {
   const value = argv[index];
 
-  if (!value || value.startsWith("--")) {
+  if (!value || value === "--") {
     throw new Error(`${flag} requires a value.`);
   }
 
@@ -112,12 +183,12 @@ function parseNumberValue(rawValue: string, flag: string): number {
   return parsedValue;
 }
 
-function parseProfileValue(rawValue: string): { name: string; command: string } {
+function parseProfileValue(rawValue: string, flag: string): { name: string; command: string } {
   const [name, ...commandParts] = rawValue.split("=");
   const command = commandParts.join("=");
 
   if (!name || !command) {
-    throw new Error(`Invalid profile "${rawValue}". Use --profile name=command.`);
+    throw new Error(`Invalid profile "${rawValue}". Use ${flag} name=command.`);
   }
 
   if (RESERVED_COMMANDS.has(name)) {

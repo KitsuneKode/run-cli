@@ -2,7 +2,9 @@
 
 ## Project config
 
-File name: `.run.config.toml`
+Preferred file name: `.run.toml`
+
+Legacy file name still supported for migration: `.run.config.toml`
 
 Required:
 
@@ -61,7 +63,8 @@ Rules:
 
 - plain `run` executes `default_profile` when set
 - if `default_profile` is omitted, `profiles.default` or legacy top-level `command` is used
-- invoke profiles as `run <name>`
+- invoke profiles as `run -p <name>`
+- pass runtime args as `run -- <args...>` or `run -p <name> -- <args...>`
 - top-level `cwd` and `env` act as defaults for profiles
 - profile names cannot be `init`, `config`, `doctor`, or `help`
 - only the nearest project config is used
@@ -111,9 +114,19 @@ Non-interactive examples:
 ```bash
 run init --yes
 run init --yes --command "python exp.py"
-run init --yes --default-profile dev --profile dev="bun run dev"
-run init --yes --profile dev="go run ."
+run init --yes --default-profile dev --add-profile dev="bun run dev"
+run init --yes --add-profile worker="go run ."
 ```
+
+Compatibility note:
+
+- `run init --profile name=command` is accepted temporarily as a deprecated alias for `--add-profile`
+
+## Output modes
+
+- default execution prints a compact banner and the resolved command
+- `--verbose` / `-v` adds profile, cwd, config path, and cache details
+- `--dry-run` prints the exact final shell command without spawning the child process
 
 ## Managed process commands
 
@@ -127,3 +140,9 @@ Managed processes are started with `run up` and inspected with:
 - `run kill <name|id>`
 - `run ports`
 - `run dashboard`
+
+`run up` follows the same profile and arg model as foreground execution:
+
+- `run up`
+- `run up -p worker`
+- `run up -- --port 4000`

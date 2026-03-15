@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import path from "node:path";
 
 import { run } from "../src/cli.ts";
-import { CONFIG_FILE_NAME } from "../src/constants.ts";
+import { CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME } from "../src/constants.ts";
 import { writeTextFile } from "../src/fs.ts";
 import { captureConsole, createTempDir, withEnv } from "./helpers.ts";
 
@@ -43,6 +43,30 @@ describe("direct cli run()", () => {
     );
   });
 
+  test("shows legacy config migration hint in normal output", async () => {
+    const projectRoot = await createTempDir("run-cli-legacy-hint-");
+
+    await writeTextFile(
+      path.join(projectRoot, LEGACY_CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo legacy-run"'].join("\n"),
+    );
+
+    await withEnv(
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+      async () => {
+        const result = await captureConsole(async () => {
+          await run(["--cwd", projectRoot]);
+        });
+
+        expect(result.stdout).toContain("run  echo legacy-run");
+        expect(result.stdout).toContain("Rename it to .run.toml");
+      },
+    );
+  });
+
   test("renders doctor output when no config is present", async () => {
     const projectRoot = await createTempDir("run-cli-doctor-");
 
@@ -79,7 +103,8 @@ describe("direct cli run()", () => {
 
     expect(zshResult.stdout).toContain("#compdef run runx");
     expect(zshResult.stdout).toContain("compdef _run run runx");
+    expect(zshResult.stdout).toContain("--profile[Select a named profile]");
     expect(bashResult.stdout).toContain("complete -F _run_complete run runx");
-    expect(bashResult.stdout).toContain("_run_profiles()");
+    expect(bashResult.stdout).toContain("--verbose -v --profile -p");
   });
 });

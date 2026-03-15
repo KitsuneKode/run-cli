@@ -7,7 +7,7 @@ import { pathExists, writeTextFile } from "../src/fs.ts";
 import { captureConsole, createTempDir, withEnv } from "./helpers.ts";
 
 describe("default profile and managed process workflow", () => {
-  test("uses default_profile to decide what plain run executes", async () => {
+  test("uses default_profile to decide what plain run executes and supports explicit profile flag", async () => {
     const projectRoot = await createTempDir("run-cli-default-profile-");
 
     await writeTextFile(
@@ -29,11 +29,15 @@ describe("default profile and managed process workflow", () => {
     const result = await captureConsole(async () => {
       await run(["--cwd", projectRoot, "--dry-run"]);
     });
+    const explicitResult = await captureConsole(async () => {
+      await run(["--cwd", projectRoot, "-p", "default", "--dry-run"]);
+    });
     const profilesResult = await captureConsole(async () => {
       await run(["profiles", "--cwd", projectRoot]);
     });
 
     expect(result.stdout).toContain("echo dev-mode");
+    expect(explicitResult.stdout).toContain("echo stable");
     expect(profilesResult.stdout).toContain("* dev");
     expect(profilesResult.stdout).toContain("preferred local workflow");
   });
@@ -70,7 +74,7 @@ describe("default profile and managed process workflow", () => {
       },
       async () => {
         const upResult = await captureConsole(async () => {
-          await run(["up", "--cwd", projectRoot]);
+          await run(["up", "--cwd", projectRoot, "--", "--flag"]);
         });
         const startedName = upResult.stdout.match(/started\s+([^\n]+)/)?.[1]?.trim();
 
@@ -88,18 +92,21 @@ describe("default profile and managed process workflow", () => {
           projectName: string;
           status: string;
           logPath: string;
+          commandArgs: string[];
         }>;
         const processRecord = processes.find((entry) => entry.name === startedName);
 
         expect(processRecord?.projectName).toBe("dx-app");
         expect(processRecord?.status).toBe("running");
         expect(processRecord?.logPath).toBeDefined();
+        expect(processRecord?.commandArgs).toContain("--flag");
 
         const inspectResult = await captureConsole(async () => {
           await run(["inspect", startedName]);
         });
         expect(inspectResult.stdout).toContain("project: dx-app");
         expect(inspectResult.stdout).toContain("status: running");
+        expect(inspectResult.stdout).toContain("args: --flag");
 
         const logsResult = await captureConsole(async () => {
           await run(["logs", startedName, "--lines", "10"]);
@@ -111,6 +118,7 @@ describe("default profile and managed process workflow", () => {
         });
         expect(dashboardResult.stdout).toContain("run dashboard");
         expect(dashboardResult.stdout).toContain("dx-app");
+        expect(dashboardResult.stdout).toContain("Next: run inspect <name>");
 
         const stopResult = await captureConsole(async () => {
           await run(["stop", startedName]);

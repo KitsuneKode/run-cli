@@ -1,4 +1,6 @@
-export const CONFIG_FILE_NAME = ".run.config.toml";
+export const CONFIG_FILE_NAME = ".run.toml";
+export const LEGACY_CONFIG_FILE_NAME = ".run.config.toml";
+export const PROJECT_CONFIG_FILE_NAMES = [CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME] as const;
 export const GLOBAL_CONFIG_RELATIVE_PATH = "run/config.toml";
 export const CACHE_FILE_RELATIVE_PATH = "run/cache.json";
 export const STATE_DIR_RELATIVE_PATH = "run";

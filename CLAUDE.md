@@ -104,3 +104,12 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+## Repo-specific CLI notes
+
+- This repo's project config is `.run.toml`; legacy `.run.config.toml` may appear only for migration handling.
+- Treat `run [args...]` as the primary execution model.
+- Profiles are explicit: use `-p` / `--profile`, never positional profile guessing.
+- When changing CLI semantics, update tests, completions, `README.md`, docs, and `AGENTS.md` in the same change.
+- Keep the default startup banner minimal and polished; only show richer execution detail behind `--verbose`.
+- Reuse the shared command-construction path so dry-run, normal run, managed processes, dashboard, and inspect all report the same command shape.

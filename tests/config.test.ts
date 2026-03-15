@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { CacheStore } from "../src/cache.ts";
 import { resolveProfile, resolveProjectConfig } from "../src/config.ts";
-import { CONFIG_FILE_NAME } from "../src/constants.ts";
+import { CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME } from "../src/constants.ts";
 import { writeTextFile } from "../src/fs.ts";
 
 async function createTempProject(): Promise<string> {
@@ -68,5 +68,24 @@ describe("config resolution", () => {
     }
 
     expect(() => resolveProfile(resolvedConfig, "dev")).toThrow('Profile "dev" is not defined');
+  });
+
+  test("resolves legacy config when current config is absent", async () => {
+    const projectRoot = await createTempProject();
+    const cacheStore = new CacheStore(path.join(projectRoot, ".cache", "run-cache.json"));
+
+    await writeTextFile(
+      path.join(projectRoot, LEGACY_CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo legacy"'].join("\n"),
+    );
+
+    const resolvedConfig = await resolveProjectConfig({
+      cwd: projectRoot,
+      useCache: true,
+      cacheStore,
+    });
+
+    expect(resolvedConfig?.sourcePath).toBe(path.join(projectRoot, LEGACY_CONFIG_FILE_NAME));
+    expect(resolvedConfig?.isLegacyPath).toBe(true);
   });
 });

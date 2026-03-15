@@ -1,13 +1,14 @@
 # run-cli
 
-`run-cli` is a Bun-native CLI that gives every project a small, explicit launcher with fast local lookup, named profiles, and smart suggestions when config is missing.
+`run-cli` is a Bun-native launcher that gives each project one small, explicit entrypoint with named profiles, config lookup, light process management, and helpful migration guidance when the contract changes.
 
 ## Why it exists
 
-Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means remembering a different command for every repo. `run` keeps the command surface tiny:
+Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means remembering a different command surface for every repo. `run` keeps the interface small:
 
 - `run` starts the default project command
-- `run dev` starts the `dev` profile
+- `run -p dev` starts the `dev` profile explicitly
+- `run -- --watch` forwards args to the default command
 - `run up` starts a managed background process
 - `run ps` and `run dashboard` show what is running across projects
 - `run init` writes a local config from detected project signals
@@ -16,7 +17,7 @@ Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means r
 The tool is intentionally lightweight:
 
 - Bun runtime
-- local `.run.config.toml`
+- local `.run.toml`
 - no runtime dependencies
 - small disk cache for config and detection metadata
 
@@ -25,6 +26,7 @@ It also stays explicit:
 - detect and suggest, but do not silently manage your runtime environment
 - let `run init` choose a detected command or accept a custom one
 - keep the final project command in versioned config
+- make profile selection explicit with `-p` instead of positional guessing
 
 ## Install
 
@@ -64,8 +66,7 @@ For Zsh, source it the same way you were doing before:
 [[ ! -f ~/.config/zsh/run.zsh ]] || source ~/.config/zsh/run.zsh
 ```
 
-There are also checked-in loader scripts in [`completions/run.zsh`](completions/run.zsh) and
-[`completions/run.bash`](completions/run.bash) if you prefer to source those directly.
+There are also checked-in loader scripts in `completions/run.zsh` and `completions/run.bash` if you prefer to source those directly.
 
 ## Quickstart
 
@@ -74,7 +75,8 @@ Inside a project:
 ```bash
 run init
 run
-run dev
+run -p dev
+run -- --watch
 ```
 
 Or create the config directly:
@@ -93,11 +95,11 @@ command = "bun --hot index.ts"
 ## CLI overview
 
 ```text
-run [profile] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
-run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--profile <name=command>]
+run [args...] [-p <profile>] [-v] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
+run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]
 run completion <zsh|bash>
-run profiles
-run up [profile] [--name <name>]
+run profiles [--json]
+run up [args...] [-p <profile>] [--name <name>]
 run ps [--json]
 run dashboard
 run inspect <name|id> [--json]
@@ -117,8 +119,8 @@ Preview what would run:
 
 ```bash
 run --dry-run
-run dev --dry-run
-run completion zsh
+run -p dev --dry-run
+run -- --watch --dry-run
 ```
 
 Create config without prompts:
@@ -126,8 +128,8 @@ Create config without prompts:
 ```bash
 run init --yes
 run init --yes --command "python exp.py"
-run init --yes --default-profile dev --profile dev="bun run dev"
-run init --yes --profile dev="python -m uvicorn app:app --reload"
+run init --yes --default-profile dev --add-profile dev="bun run dev"
+run init --yes --add-profile worker="go run ."
 ```
 
 Interactive init is designed for ambiguous repos too:
@@ -150,27 +152,41 @@ Manage long-running processes:
 
 ```bash
 run up
-run up dev
+run up -p worker -- --port 4000
 run ps
-run inspect my-app:dev
-run logs my-app:dev --follow
-run stop my-app:dev
+run inspect my-app:worker
+run logs my-app:worker --follow
+run stop my-app:worker
 run dashboard
 ```
 
 ## Config lookup
 
-`run` walks upward from the current directory until it finds the nearest `.run.config.toml`.
+`run` walks upward from the current directory until it finds the nearest `.run.toml`.
 
-That means:
+Current resolution rules:
 
-- a monorepo package can have its own config
-- a repo root config can serve nested folders
+- `.run.toml` is preferred
+- legacy `.run.config.toml` still resolves for migration compatibility
 - execution defaults to the directory that contains the config file
 
 Only the nearest project config is used in v1. Ancestor configs are not merged.
 
-Plain `run` resolves the effective default profile for the project.
+Plain `run` resolves the effective default profile for the project. Profiles are selected explicitly with `run -p <name>`.
+
+## Banner and migration UX
+
+`run` aims to feel polished without adding overhead:
+
+- default execution prints a compact banner with the resolved command
+- `-v` / `--verbose` adds profile, cwd, config, and cache details
+- `--dry-run` prints the exact final shell command
+- migration hints appear only when they help
+
+Examples:
+
+- old `run dev` profile usage now fails with a hint to use `run -p dev`
+- legacy `.run.config.toml` usage prints a hint to rename it to `.run.toml`
 
 ## Examples
 
@@ -232,6 +248,7 @@ command = "go run ."
 
 - project name
 - profile
+- full command and forwarded args
 - pid
 - uptime
 - memory usage
@@ -299,6 +316,7 @@ Git hooks:
 - `docs/architecture.md`
 - `docs/config-reference.md`
 - `docs/contributing.md`
+- `AGENTS.md`
 
 ## Current scope
 

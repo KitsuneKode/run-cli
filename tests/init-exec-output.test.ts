@@ -72,6 +72,7 @@ describe("init, exec, and output helpers", () => {
   test("runResolvedProfile propagates shell exit codes", async () => {
     const exitCode = await runResolvedProfile(testProfile("exit 3"), testGlobalConfig(), {
       dryRun: false,
+      args: [],
     });
 
     expect(exitCode).toBe(3);
@@ -87,5 +88,17 @@ describe("init, exec, and output helpers", () => {
     expect(result.stdout).toContain("run");
     expect(result.stderr).toContain("careful");
     expect(result.stderr).toContain("problem");
+  });
+
+  test("runResolvedProfile appends forwarded args", async () => {
+    const projectRoot = await createTempDir("run-cli-exec-args-");
+    const outputPath = path.join(projectRoot, "out.txt");
+
+    await runResolvedProfile(testProfile(`printf '%s' > ${outputPath}`), testGlobalConfig(), {
+      dryRun: false,
+      args: ["hello world"],
+    });
+
+    expect(await Bun.file(outputPath).text()).toBe("hello world");
   });
 });

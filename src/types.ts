@@ -27,6 +27,12 @@ export interface ResolvedProfile {
   description?: string;
 }
 
+export interface ResolvedCommand {
+  command: string;
+  args: string[];
+  shellCommand: string;
+}
+
 export interface GlobalConfig {
   version: number;
   shell?: string;
@@ -40,6 +46,7 @@ export interface ResolvedConfig {
   sourcePath: string;
   configDir: string;
   cacheHit: boolean;
+  isLegacyPath: boolean;
 }
 
 export interface DetectionSuggestion {
@@ -86,6 +93,8 @@ export interface ManagedProcessRecord {
   projectRoot: string;
   configPath: string;
   profile: string;
+  baseCommand: string;
+  commandArgs: string[];
   command: string;
   cwd: string;
   pid: number;

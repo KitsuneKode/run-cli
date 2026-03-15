@@ -13,7 +13,7 @@ export function renderDoctorReport(input: {
     `cwd: ${input.cwd}`,
     `config lookup: ${
       input.projectConfig
-        ? `${input.projectConfig.sourcePath}${input.projectConfig.cacheHit ? " (cache hit)" : ""}`
+        ? `${input.projectConfig.sourcePath}${input.projectConfig.isLegacyPath ? " (legacy)" : ""}${input.projectConfig.cacheHit ? " (cache hit)" : ""}`
         : `not found (${CONFIG_FILE_NAME})`
     }`,
     `global config: ${getGlobalConfigPath()}`,
