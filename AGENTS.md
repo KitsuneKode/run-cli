@@ -33,6 +33,7 @@ When changing CLI semantics, command output, config lookup, or profile behavior,
 - Preserve deterministic text output so humans and agents can reason about the CLI cheaply.
 - When adding diagnostics, keep a stable machine-readable path (`--json`) where practical.
 - Keep overview commands lightweight; defer expensive process probing and per-process metrics to explicit commands when possible.
+- Prefer first-principles documentation that teaches the current contract, not migration-only documentation.
 
 ## Migration guidance
 

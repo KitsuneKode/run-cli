@@ -1,34 +1,75 @@
 # run-cli
 
-`run-cli` is a Bun-native launcher that gives each project one small, explicit entrypoint with named profiles, config lookup, light process management, and helpful migration guidance when the contract changes.
+`run-cli` gives a project one stable command surface: `run`.
+
+Instead of remembering whether this repo uses `bun run`, `node`, `python`, `go run`, `cargo run`, or a shell script, you define the project contract once in `.run.toml` and use the same launcher everywhere.
+
+## Core idea
+
+`run` has one job: launch the project's command intentionally and cheaply.
+
+- `run` executes the project's default command
+- `run -p <profile>` executes a named profile
+- `run -- <args...>` forwards args to the child command untouched
+- `run up` manages long-running processes started by `run`
+- `run doctor` explains what the CLI resolved
+
+The current version is built around those rules. This is the canonical contract.
+
+## Mental model
+
+Think about the CLI in three layers.
+
+### 1. Project command
+
+Plain `run` means:
+
+```bash
+run
+```
+
+That executes the effective default profile from `.run.toml`.
+
+### 2. Profile selection
+
+Profiles are explicit:
+
+```bash
+run -p dev
+run -p worker
+```
+
+If you want a named workflow, use `-p` or `--profile`.
+
+### 3. Child arguments
+
+Anything after `--` belongs to your app, not the CLI:
+
+```bash
+run -- --watch
+run -p dev -- --port 3000
+run -- doctor
+```
+
+This is how you pass words like `doctor`, `inspect`, or `ports` to the underlying project command instead of triggering `run` subcommands.
+
+Rule of thumb:
+
+- before `--` = `run` CLI territory
+- after `--` = child command territory
 
 ## Why it exists
 
-Jumping between Bun, Node, Python, Go, Rust, and one-off scripts usually means remembering a different command surface for every repo. `run` keeps the interface small:
+Most repos already have a real entrypoint, but the entrypoint is hidden behind ecosystem-specific commands and local habits.
 
-- `run` starts the default project command
-- `run -p dev` starts the `dev` profile explicitly
-- `run -- --watch` forwards args to the default command
-- `run doctor --json` exposes machine-readable diagnostics
-- `run ps` and `run dashboard` stay lightweight; memory and port probing are deferred to `run inspect` and `run ports`
-- `run up` starts a managed background process
-- `run ps` and `run dashboard` show what is running across projects
-- `run init` writes a local config from detected project signals
-- `run doctor` shows exactly what the CLI resolved and why
+`run-cli` makes that entrypoint explicit and versioned.
 
-The tool is intentionally lightweight:
+It is intentionally:
 
-- Bun runtime
-- local `.run.toml`
-- no runtime dependencies
-- small disk cache for config and detection metadata
-
-It also stays explicit:
-
-- detect and suggest, but do not silently manage your runtime environment
-- let `run init` choose a detected command or accept a custom one
-- keep the final project command in versioned config
-- make profile selection explicit with `-p` instead of positional guessing
+- lightweight: Bun runtime, no runtime deps, cheap local state
+- explicit: profiles are named, config is local, no magic env activation
+- deterministic: dry-run, doctor output, and managed process metadata all come from the same resolved command path
+- agent-friendly: the tool exposes stable human and machine-readable diagnostics
 
 ## Install
 
@@ -45,30 +86,13 @@ That exposes:
 - `run`
 - `runx`
 
-`runx` is the fallback alias if `run` ever collides with something in your shell.
+`runx` is the fallback alias if `run` collides with something in your shell.
 
-If you update the CLI locally and want to refresh the global link cleanly:
+Refresh the global link after local updates:
 
 ```bash
 bun run relink:global
 ```
-
-### Shell completion
-
-Generate the script directly from the CLI:
-
-```bash
-run completion zsh > ~/.config/zsh/run.zsh
-run completion bash > ~/.config/bash/run.bash
-```
-
-For Zsh, source it the same way you were doing before:
-
-```bash
-[[ ! -f ~/.config/zsh/run.zsh ]] || source ~/.config/zsh/run.zsh
-```
-
-There are also checked-in loader scripts in `completions/run.zsh` and `completions/run.bash` if you prefer to source those directly.
 
 ## Quickstart
 
@@ -81,7 +105,7 @@ run -p dev
 run -- --watch
 ```
 
-Or create the config directly:
+Minimal config example:
 
 ```toml
 version = 1
@@ -92,6 +116,59 @@ command = "bun run index.ts"
 
 [profiles.dev]
 command = "bun --hot index.ts"
+```
+
+## How to use it day to day
+
+### Run the project
+
+```bash
+run
+```
+
+### Run a named workflow
+
+```bash
+run -p dev
+run -p worker
+```
+
+### Pass child arguments
+
+```bash
+run -- --watch
+run -p dev -- --port 3000
+run -- inspect
+```
+
+### See exactly what would run
+
+```bash
+run --dry-run
+run -p dev --dry-run
+run -- --watch --dry-run
+```
+
+### Ask the CLI what it resolved
+
+```bash
+run doctor
+run doctor --json
+run config validate
+```
+
+### Manage a background process
+
+```bash
+run up
+run up -p worker -- --port 4000
+run ps
+run dashboard
+run inspect my-app:worker
+run logs my-app:worker --follow
+run ports
+run stop my-app:worker
+run restart my-app:worker
 ```
 
 ## CLI overview
@@ -115,83 +192,191 @@ run config <view|path|edit|validate> [--global]
 run help
 ```
 
-### Common flows
+## First-party commands vs child args
 
-Preview what would run:
+These are built into `run`:
+
+- `init`
+- `completion`
+- `doctor`
+- `profiles`
+- `up`
+- `ps`
+- `dashboard`
+- `inspect`
+- `logs`
+- `stop`
+- `restart`
+- `kill`
+- `ports`
+- `config`
+- `help`
+
+If you want the underlying project command to receive one of those words as an argument, use `--`:
 
 ```bash
-run --dry-run
-run -p dev --dry-run
-run -- --watch --dry-run
+run -- doctor
+run -- inspect
+run -p dev -- ports
 ```
 
-Create config without prompts:
+## Project config
 
-```bash
-run init --yes
-run init --yes --command "python exp.py"
-run init --yes --default-profile dev --add-profile dev="bun run dev"
-run init --yes --add-profile worker="go run ."
+The canonical project config file is:
+
+- `.run.toml`
+
+Legacy support still exists for:
+
+- `.run.config.toml`
+
+But `.run.toml` is the real contract and the file you should create, commit, and document.
+
+`run` walks upward from the current directory and uses the nearest project config only.
+
+That means:
+
+- monorepo packages can own their own run config
+- repo roots can still provide a shared default
+- ancestor configs are not merged
+
+## Example `.run.toml`
+
+```toml
+version = 1
+default_profile = "dev"
+
+[profiles.default]
+command = "bun run src/index.ts"
+
+[profiles.dev]
+command = "bun --hot src/index.ts"
+description = "local development server"
+
+[profiles.worker]
+command = "bun run src/worker.ts"
+cwd = "services/worker"
+
+[profiles.worker.env]
+QUEUE_NAME = "jobs"
+DEBUG = true
 ```
 
-Interactive init is designed for ambiguous repos too:
+## Output model
 
-- it lists detected commands with reasons
-- you can pick one by number
-- or type a custom command directly
-- or add extra named profiles before the config is written
+The CLI tries to stay polished without becoming noisy.
 
-Inspect config:
+- default execution prints a compact startup banner
+- `--verbose` / `-v` adds resolution details like profile, cwd, config path, and cache state
+- `--dry-run` prints the exact shell command
+- `run doctor` is the readable diagnostic report
+- `run doctor --json` is the machine-readable diagnostic report
+
+## Managed processes
+
+`run up` stores a lightweight registry for processes it starts itself.
+
+Managed process metadata includes:
+
+- project name
+- profile
+- full resolved command
+- forwarded args
+- pid
+- cwd
+- config path
+- log path
+- restart count
+
+Performance behavior is intentional:
+
+- `run ps` and `run dashboard` are cheap overview commands
+- they avoid expensive per-process memory and port probing by default
+- `run inspect` and `run ports` opt into more detailed process information
+
+This keeps the common path fast and low-overhead.
+
+## Diagnostics and debugging
+
+Use these when something feels off:
 
 ```bash
+run doctor
+run doctor --json
 run config path
 run config view
 run config validate
-run config edit
-run config path --global
+run --dry-run
 ```
 
-Manage long-running processes:
+Typical workflow:
+
+1. `run config path` to confirm which config is active
+2. `run config validate` to confirm it parses
+3. `run --dry-run` to see the final command
+4. `run doctor` if you need the full resolution story
+
+## Shell completion
+
+Generate completion scripts from the CLI:
 
 ```bash
-run up
-run up -p worker -- --port 4000
-run ps
-run inspect my-app:worker
-run logs my-app:worker --follow
-run stop my-app:worker
-run dashboard
+run completion zsh > ~/.config/zsh/run.zsh
+run completion bash > ~/.config/bash/run.bash
 ```
 
-## Config lookup
+For Zsh:
 
-`run` walks upward from the current directory until it finds the nearest `.run.toml`.
+```bash
+[[ ! -f ~/.config/zsh/run.zsh ]] || source ~/.config/zsh/run.zsh
+```
 
-Current resolution rules:
+Checked-in loader scripts also exist in:
 
-- `.run.toml` is preferred
-- legacy `.run.config.toml` still resolves for migration compatibility
-- execution defaults to the directory that contains the config file
+- `completions/run.zsh`
+- `completions/run.bash`
 
-Only the nearest project config is used in v1. Ancestor configs are not merged.
+## Global config
 
-Plain `run` resolves the effective default profile for the project. Profiles are selected explicitly with `run -p <name>`.
+Global defaults live at:
 
-## Banner and migration UX
+- `$XDG_CONFIG_HOME/run/config.toml`
+- fallback: `~/.config/run/config.toml`
 
-`run` aims to feel polished without adding overhead:
+Global config is intentionally limited to defaults such as:
 
-- default execution prints a compact banner with the resolved command
-- `-v` / `--verbose` adds profile, cwd, config, and cache details
-- `--dry-run` prints the exact final shell command
-- migration hints appear only when they help
+- `shell`
+- `editor`
+- `cache`
+- `detection`
 
-Examples:
+It does not define project commands or project profiles.
 
-- old `run dev` profile usage now fails with a hint to use `run -p dev`
-- legacy `.run.config.toml` usage prints a hint to rename it to `.run.toml`
+Example:
 
-## Examples
+```toml
+version = 1
+shell = "/bin/zsh"
+editor = "code -w"
+cache = true
+detection = "suggest"
+```
+
+## Caching
+
+Cache data is written to:
+
+- `$XDG_CACHE_HOME/run/cache.json`
+- fallback: `~/.cache/run/cache.json`
+
+The cache stores cheap metadata such as:
+
+- resolved config paths for known working directories
+- detection results for known project roots
+
+Use `--no-cache` to bypass cache reads and writes.
+
+## Ecosystem examples
 
 ### Bun / TypeScript
 
@@ -227,14 +412,12 @@ command = "python exp.py"
 command = "python -m uvicorn app:app --reload"
 ```
 
-If project-specific tooling is present, `run init` prefers explicit commands such as:
+If project-native tooling is present, `run init` prefers explicit commands like:
 
 - `uv run python main.py`
 - `pipenv run python main.py`
 - `poetry run python main.py`
 - `.venv/bin/python main.py`
-
-It suggests those commands, but still lets the user override them before writing config.
 
 ### Go
 
@@ -245,84 +428,26 @@ version = 1
 command = "go run ."
 ```
 
-## Managed processes
+## Contributing and docs
 
-`run up` stores a lightweight registry for managed processes and exposes:
+Useful repo docs:
 
-- project name
-- profile
-- full command and forwarded args
-- pid
-- uptime
-- memory usage
-- listening ports on demand through `run ports` and `run inspect`
-- logs
-- cwd and config path
+- `docs/config-reference.md`
+- `docs/architecture.md`
+- `docs/contributing.md`
+- `AGENTS.md`
 
-This stays intentionally local and lightweight: `run` only manages processes that it starts itself.
-
-## Global config
-
-Global defaults live at:
-
-- `$XDG_CONFIG_HOME/run/config.toml`
-- fallback: `~/.config/run/config.toml`
-
-Global config is intentionally limited to defaults such as:
-
-- `shell`
-- `editor`
-- `cache`
-- `detection`
-
-It does not define project commands or profiles.
-
-Example:
-
-```toml
-version = 1
-shell = "/bin/zsh"
-editor = "code -w"
-cache = true
-detection = "suggest"
-```
-
-## Caching
-
-Cache data is written to:
-
-- `$XDG_CACHE_HOME/run/cache.json`
-- fallback: `~/.cache/run/cache.json`
-
-The cache stores:
-
-- resolved config paths for known working directories
-- detection results for known project roots
-
-Entries are invalidated when the relevant file mtime or size changes. Use `--no-cache` to bypass cache reads and writes.
-
-## Quality workflow
+Local quality workflow:
 
 ```bash
 bun run format
 bun run lint
 bun test
+bun run build
 ```
-
-Git hooks:
-
-- `pre-commit`: `lint-staged`
-- `commit-msg`: Commitlint with Conventional Commits
-
-## Docs
-
-- `docs/architecture.md`
-- `docs/config-reference.md`
-- `docs/contributing.md`
-- `AGENTS.md`
 
 ## Current scope
 
-- Bun is required to run the CLI.
-- v1 targets macOS and Linux shell behavior.
-- Windows support is intentionally deferred.
+- Bun is required to run the CLI
+- v1 targets macOS and Linux shell behavior
+- Windows support is intentionally deferred

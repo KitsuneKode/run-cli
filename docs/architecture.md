@@ -46,6 +46,8 @@ The active invocation model is intentionally strict:
 
 This avoids ambiguous positional profile behavior and keeps the launcher predictable.
 
+The README is expected to teach this mental model directly, not just list flags and commands.
+
 ## Migration behavior
 
 The CLI includes a small migration layer for trust and clarity:
