@@ -18,5 +18,6 @@ function runCommand(command: string[], options?: { allowFailure?: boolean }): vo
   }
 }
 
+runCommand(["bun", "run", "build"]);
 runCommand(["bun", "unlink"], { allowFailure: true });
 runCommand(["bun", "link"]);

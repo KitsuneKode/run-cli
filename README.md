@@ -76,9 +76,13 @@ It is intentionally:
 Prerequisite: Bun `>= 1.3.9`
 
 ```bash
-bun install
-bun run build
-bun link
+bun add -g @kitsunekode/run-cli
+```
+
+You can also install with npm if Bun is already available on your `PATH` at runtime:
+
+```bash
+npm install -g @kitsunekode/run-cli
 ```
 
 That exposes:
@@ -87,6 +91,14 @@ That exposes:
 - `runx`
 
 `runx` is the fallback alias if `run` collides with something in your shell.
+
+### Install from source
+
+```bash
+bun install
+bun run build
+bun link
+```
 
 Refresh the global link after local updates:
 

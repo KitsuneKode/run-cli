@@ -1,30 +1,46 @@
 {
-  "name": "run-cli",
+  "name": "@kitsunekode/run-cli",
   "version": "0.1.0",
   "description": "A lightweight Bun-native CLI for running projects through local profiles and smart detection.",
   "type": "module",
-  "private": true,
-  "module": "src/cli.ts",
-  "bin": {
-    "run": "src/bin/run.ts",
-    "runx": "src/bin/run.ts"
+  "license": "MIT",
+  "author": "kitsunekode",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KitsuneKode/run-cli.git"
   },
-  "files": ["src", "docs", "completions", "README.md"],
+  "homepage": "https://github.com/KitsuneKode/run-cli#readme",
+  "bugs": {
+    "url": "https://github.com/KitsuneKode/run-cli/issues"
+  },
+  "keywords": ["bun", "cli", "profiles", "run", "runner", "shell", "terminal"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "run": "./bin/run",
+    "runx": "./bin/runx"
+  },
+  "files": ["bin/run", "bin/runx", "dist/run.js", "completions", "README.md", "LICENSE"],
   "engines": {
     "bun": ">=1.3.9"
   },
   "scripts": {
     "dev": "bun run src/bin/run.ts",
-    "build": "mkdir -p dist && bun build src/bin/run.ts --outfile dist/cli.js --target bun",
+    "build": "mkdir -p dist && bun build src/bin/run.ts --minify --outfile dist/run.js --target bun",
     "test": "bun test",
     "test:watch": "bun test --watch",
     "lint": "biome check . && markdownlint-cli2 README.md docs/**/*.md",
     "format": "biome format --write . && markdownlint-cli2 --fix README.md docs/**/*.md",
-    "check": "bun run lint && bun test",
-    "link:global": "bun link",
+    "typecheck": "bunx tsc --noEmit",
+    "check": "bun run typecheck && bun run lint && bun test",
+    "pkg:check": "bun run build && npm pack --dry-run --ignore-scripts",
+    "link:global": "bun run build && bun link",
     "unlink:global": "bun unlink",
     "relink:global": "bun run src/scripts/relink-global.ts",
-    "prepare": "husky"
+    "prepack": "bun run build",
+    "prepublishOnly": "bun run check && bun run build",
+    "prepare": "[ -f .git/config ] && [ -w .git/config ] && husky || echo 'Skipping husky install (no writable .git config)'"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",

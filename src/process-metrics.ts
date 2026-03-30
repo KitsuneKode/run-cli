@@ -97,11 +97,16 @@ export function getBatchMetrics(pids: number[]): Map<number, BatchMetrics> {
     const match = trimmed.match(/^(\d+)\s+(\d+)\s+(.+)$/);
 
     if (match) {
-      const pid = Number.parseInt(match[1], 10);
-      const rssKb = Number.parseInt(match[2], 10);
+      const [, pidText, rssText, startTime] = match;
+      if (!pidText || !rssText || !startTime) {
+        continue;
+      }
+
+      const pid = Number.parseInt(pidText, 10);
+      const rssKb = Number.parseInt(rssText, 10);
       results.set(pid, {
         rssKb: Number.isFinite(rssKb) ? rssKb : null,
-        startTime: match[3].trim(),
+        startTime: startTime.trim(),
       });
     }
   }
@@ -132,7 +137,12 @@ export function getBatchPorts(pids: number[]): Map<number, number[]> {
       continue;
     }
 
-    const pid = Number.parseInt(columns[1], 10);
+    const pidText = columns[1];
+    if (!pidText) {
+      continue;
+    }
+
+    const pid = Number.parseInt(pidText, 10);
     const portMatch = line.match(/:(\d+)\s+\(LISTEN\)/);
 
     if (portMatch?.[1]) {
