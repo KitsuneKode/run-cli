@@ -108,8 +108,10 @@ bun run relink:global
 
 ## Release Workflow
 
-- `package.json` version is the release source of truth.
-- Work from short-lived branches and merge to `main` when the next release candidate is ready.
+- Add a changeset with `bun run changeset` for user-facing or release-worthy changes.
+- Work from short-lived branches and merge to `main`.
+- `.github/workflows/version-packages.yml` opens or updates a `Version Packages` PR from merged changesets.
+- Merging the version PR updates `package.json` and changelog entries for the next release.
 - `CI` runs on pull requests and `main`, and its workflow summary records the exact package version it validated.
 - `Release` runs on pushes to `main` and manual dispatch. If the version is not on npm yet and `NPM_TOKEN` is configured in GitHub secrets, it publishes the exact `package.json` version of `@kitsunekode/run-cli` and creates a GitHub release tagged `vX.Y.Z`.
 

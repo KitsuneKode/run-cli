@@ -54,7 +54,9 @@ Git hooks are managed with Husky:
 
 Release automation:
 
-- `package.json` version is the release source of truth.
+- add a changeset with `bun run changeset` for user-facing or release-worthy changes
+- Changesets opens or updates the `Version Packages` PR from merged changesets
+- merging the version PR updates `package.json` and changelog entries for the next release
 - `CI` records the validated package version in the workflow summary.
 - `Release` runs on pushes to `main` and manual dispatch, publishes when `NPM_TOKEN` is configured, and creates the matching `vX.Y.Z` GitHub release.
 
@@ -124,7 +126,7 @@ Before a release or tag:
 
 1. `bun run check`
 2. `bun run build`
-3. confirm `package.json` contains the intended release version
+3. confirm the relevant changesets are merged and the `Version Packages` PR has updated `package.json`
 4. confirm `run help` still teaches the current contract clearly
 5. confirm `run doctor` and `run doctor --json` still behave deterministically
 6. confirm `run config validate` still works on valid configs

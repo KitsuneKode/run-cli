@@ -35,6 +35,8 @@
     "typecheck": "bunx tsc --noEmit",
     "check": "bun run typecheck && bun run lint && bun test",
     "pkg:check": "bun run build && npm pack --dry-run --ignore-scripts",
+    "changeset": "changeset",
+    "version:packages": "changeset version",
     "link:global": "bun run build && bun link",
     "unlink:global": "bun unlink",
     "relink:global": "bun run src/scripts/relink-global.ts",
@@ -43,10 +45,11 @@
     "prepare": "[ -f .git/config ] && [ -w .git/config ] && husky || echo 'Skipping husky install (no writable .git config)'"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.30.0",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@types/bun": "latest",
-    "@biomejs/biome": "^1.9.4",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "markdownlint-cli2": "^0.18.1"
