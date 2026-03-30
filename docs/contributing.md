@@ -58,7 +58,8 @@ Release automation:
 - Changesets opens or updates the `Version Packages` PR from merged changesets
 - merging the version PR updates `package.json` and changelog entries for the next release
 - `CI` records the validated package version in the workflow summary.
-- `Release` runs on pushes to `main` and manual dispatch, publishes when `NPM_TOKEN` is configured, and creates the matching `vX.Y.Z` GitHub release.
+- `Release` runs on pushes to `main` and manual dispatch, publishes through npm trusted publishing, and creates the matching `vX.Y.Z` GitHub release.
+- For a brand-new package, bootstrap the first publish manually so the npm package settings page exists and you can attach the trusted publisher to `release.yml`.
 
 ## Expectations for code changes
 
