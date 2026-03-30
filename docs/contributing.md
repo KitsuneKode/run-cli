@@ -52,6 +52,12 @@ Git hooks are managed with Husky:
 - `pre-commit` runs `lint-staged`
 - `commit-msg` runs Commitlint
 
+Release automation:
+
+- `package.json` version is the release source of truth.
+- `CI` records the validated package version in the workflow summary.
+- `Release` runs on pushes to `main` and manual dispatch, publishes when `NPM_TOKEN` is configured, and creates the matching `vX.Y.Z` GitHub release.
+
 ## Expectations for code changes
 
 ### CLI semantics
@@ -118,10 +124,11 @@ Before a release or tag:
 
 1. `bun run check`
 2. `bun run build`
-3. confirm `run help` still teaches the current contract clearly
-4. confirm `run doctor` and `run doctor --json` still behave deterministically
-5. confirm `run config validate` still works on valid configs
-6. confirm `bun link` exposes both `run` and `runx`
+3. confirm `package.json` contains the intended release version
+4. confirm `run help` still teaches the current contract clearly
+5. confirm `run doctor` and `run doctor --json` still behave deterministically
+6. confirm `run config validate` still works on valid configs
+7. confirm `bun link` exposes both `run` and `runx`
 
 ## Documentation guidance
 

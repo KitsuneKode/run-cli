@@ -16,6 +16,13 @@
 - `run up` mirrors the same contract for managed background processes.
 - `--` ends CLI parsing; everything after goes to the child command untouched.
 
+## Release Workflow
+
+- `package.json` version is the release source of truth.
+- Work on short-lived branches and merge to `main` when a release candidate is ready.
+- `.github/workflows/ci.yml` validates pull requests and `main` with `bun run check` and `bun run pkg:check`, and records the validated package version in the workflow summary.
+- `.github/workflows/release.yml` runs on pushes to `main` and manual dispatch. When `NPM_TOKEN` is configured and the version is not already on npm, it publishes the exact `package.json` version and creates a GitHub release tagged `vX.Y.Z`.
+
 ## Required companion updates
 
 When changing CLI semantics, command output, config lookup, or profile behavior, always update **all** of these in the same change:
