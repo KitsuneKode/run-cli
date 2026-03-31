@@ -1,10 +1,13 @@
-const COLOR_ENABLED =
-  Boolean(process.stdout.isTTY) &&
-  process.env.NO_COLOR === undefined &&
-  process.env.TERM !== "dumb";
+function isColorEnabled(): boolean {
+  return (
+    Boolean(process.stdout.isTTY) &&
+    process.env.NO_COLOR === undefined &&
+    process.env.TERM !== "dumb"
+  );
+}
 
 function paint(code: string, value: string): string {
-  return COLOR_ENABLED ? `\u001B[${code}m${value}\u001B[0m` : value;
+  return isColorEnabled() ? `\u001B[${code}m${value}\u001B[0m` : value;
 }
 
 export function bold(value: string): string {

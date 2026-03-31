@@ -45,6 +45,8 @@ export async function captureConsole(
   const originalError = console.error;
   const originalStdoutWrite = process.stdout.write.bind(process.stdout);
   const originalStderrWrite = process.stderr.write.bind(process.stderr);
+  const originalNoColor = process.env.NO_COLOR;
+  process.env.NO_COLOR = "1";
 
   console.log = (...args: unknown[]) => {
     stdoutMessages.push(args.map(String).join(" "));
@@ -79,6 +81,7 @@ export async function captureConsole(
     console.error = originalError;
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
+    process.env.NO_COLOR = originalNoColor;
     process.exitCode = 0;
   }
 }
