@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -17,6 +20,9 @@ concurrency:
 jobs:
   version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Check out repository
@@ -37,8 +43,9 @@ jobs:
         uses: changesets/action@v1
         with:
           version: bun run version:packages
-          commit: Version Packages
+          commit: "chore(release): version packages"
           title: Version Packages
+          createPR: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
