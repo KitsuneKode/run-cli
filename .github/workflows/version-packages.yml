@@ -45,7 +45,7 @@ jobs:
           version: bun run version:packages
           commit: "chore(release): version packages"
           title: Version Packages
-          createPR: false
+          createPR: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
