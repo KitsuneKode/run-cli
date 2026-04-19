@@ -18,10 +18,9 @@
     "access": "public"
   },
   "bin": {
-    "run": "bin/run",
-    "runx": "bin/runx"
+    "run": "bin/run"
   },
-  "files": ["bin/run", "bin/runx", "dist/run.js", "completions", "README.md", "LICENSE"],
+  "files": ["bin/run", "dist/run.js", "completions", "README.md", "LICENSE"],
   "engines": {
     "bun": ">=1.3.9"
   },
