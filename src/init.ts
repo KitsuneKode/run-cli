@@ -6,7 +6,7 @@ import { renderProjectConfig } from "./config.ts";
 import { CONFIG_FILE_NAME, LEGACY_CONFIG_FILE_NAME } from "./constants.ts";
 import { detectProject } from "./detect.ts";
 import { pathExists, writeTextFile } from "./fs.ts";
-import type { DetectionSuggestion, RunConfigFile } from "./types.ts";
+import type { DetectionSuggestion, ProfileConfig, RunConfigFile } from "./types.ts";
 
 export interface InitOptions {
   cwd: string;
@@ -206,37 +206,24 @@ export async function runInit(options: InitOptions): Promise<{
     }
   }
 
-  const config: RunConfigFile = {
-    version: 1,
-    defaultProfile,
-    profiles: {
-      default: {
-        command,
-      },
-    },
-  };
-  if (!config.profiles) {
-    config.profiles = {};
-  }
-
-  const profiles = config.profiles;
+  const profiles: Record<string, Partial<ProfileConfig>> = {};
 
   for (const profile of extraProfiles) {
-    if (profile.name === "default") {
-      profiles.default = {
-        command: profile.command,
-      };
-      continue;
-    }
-
     profiles[profile.name] = {
       command: profile.command,
     };
   }
 
-  if (defaultProfile === "default" && profiles.default?.command) {
-    config.command = profiles.default.command;
-  }
+  // Always write the default command into profiles.default
+  profiles.default = {
+    command,
+  };
+
+  const config: RunConfigFile = {
+    version: 1,
+    defaultProfile,
+    profiles,
+  };
 
   await writeTextFile(configPath, renderProjectConfig(config));
 

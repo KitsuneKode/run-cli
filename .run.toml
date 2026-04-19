@@ -1,6 +1,5 @@
 version = 1
 default_profile = "dev"
-command = "bun test"
 
 [profiles.default]
 command = "bun test"

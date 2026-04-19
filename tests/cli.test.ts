@@ -126,7 +126,8 @@ describe("cli integration", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain("positional profiles were removed");
     expect(result.stderr).toContain("run -p dev");
-    expect(result.stderr).toContain("run -- dev --watch");
+    // --watch is a CLI flag, not a child arg, so message shows just "dev"
+    expect(result.stderr).toContain("run -- dev");
   });
 
   test("continues parsing flags before passthrough boundary", async () => {

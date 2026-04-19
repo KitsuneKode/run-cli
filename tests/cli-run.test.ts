@@ -62,7 +62,7 @@ describe("direct cli run()", () => {
           await run(["--cwd", projectRoot]);
         });
 
-        expect(result.stdout).toContain("run // echo legacy-run");
+        expect(result.stdout).toContain("run → echo legacy-run");
         expect(result.stdout).toContain("Rename it to .run.toml");
       },
     );
@@ -137,14 +137,17 @@ describe("direct cli run()", () => {
       await run(["completion", "bash"]);
     });
 
-    expect(zshResult.stdout).toContain("#compdef run runx");
-    expect(zshResult.stdout).toContain("compdef _run run runx");
+    expect(zshResult.stdout).toContain("#compdef run");
+    expect(zshResult.stdout).toContain("compdef _run run");
     expect(zshResult.stdout).toContain("--profile[Select a named profile]");
-    expect(zshResult.stdout).toContain(
-      "--details[Show detailed managed-process metrics where supported]",
-    );
+    expect(zshResult.stdout).toContain("--watch[Live-refresh ps every 2s]");
+    expect(zshResult.stdout).toContain("--follow[Follow log output]");
+    // Strips ANSI codes from ps output before parsing managed names
+    expect(zshResult.stdout).toContain("sed");
+    expect(zshResult.stdout).toContain("x1b");
     expect(zshResult.stdout).toContain("if (( ${words[(I)--]} )); then");
-    expect(bashResult.stdout).toContain("complete -F _run_complete run runx");
-    expect(bashResult.stdout).toContain("--verbose -v --details --profile -p");
+    expect(bashResult.stdout).toContain("complete -F _run_complete run");
+    expect(bashResult.stdout).toContain("--watch -w");
+    expect(bashResult.stdout).toContain("x1b");
   });
 });

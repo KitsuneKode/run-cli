@@ -15,7 +15,6 @@ describe("default profile and managed process workflow", () => {
       [
         "version = 1",
         'default_profile = "dev"',
-        'command = "echo stable"',
         "",
         "[profiles.default]",
         'command = "echo stable"',
@@ -118,14 +117,16 @@ describe("default profile and managed process workflow", () => {
         });
         expect(dashboardResult.stdout).toContain("run dashboard");
         expect(dashboardResult.stdout).toContain("dx-app");
-        expect(dashboardResult.stdout).toContain("Next: run inspect <name>");
-        expect(dashboardResult.stdout).toContain("ports=lazy");
-        expect(dashboardResult.stdout).toContain("memory=lazy");
+        expect(dashboardResult.stdout).toContain("running");
+        expect(dashboardResult.stdout).toContain("stopped");
+        // Dashboard now shows real memory instead of lazy placeholders
+        expect(dashboardResult.stdout).toMatch(/mem=[\d.]+ (KB|MB|GB)|mem=-/);
 
         const plainPsResult = await captureConsole(async () => {
           await run(["ps"]);
         });
-        expect(plainPsResult.stdout).toContain("-");
+        // Memory is now always shown
+        expect(plainPsResult.stdout).toMatch(/MEM/);
 
         const detailedPsResult = await captureConsole(async () => {
           await run(["ps", "--details"]);

@@ -321,37 +321,23 @@ export function resolveProfile(
   overrideCwd?: string,
 ): ResolvedProfile {
   const { config, configDir, sourcePath } = resolvedConfig;
-  const selectedName =
-    profileName ?? config.defaultProfile ?? (config.profiles?.default ? "default" : "default");
-  const profileDefaults = {
-    command: config.command,
-    cwd: config.cwd,
-    env: config.env ?? {},
-    description: undefined,
-  };
-  const profileOverride =
-    selectedName === "default" && !profileName && !config.profiles?.default
-      ? undefined
-      : config.profiles?.[selectedName];
+  const selectedName = profileName ?? config.defaultProfile ?? "default";
+  const profileEntry = config.profiles?.[selectedName];
 
-  if (
-    (profileName || config.defaultProfile) &&
-    !profileOverride &&
-    !(selectedName === "default" && config.command)
-  ) {
+  if (!profileEntry?.command && !(selectedName === "default" && config.command)) {
     throw new Error(`Profile "${selectedName}" is not defined in ${sourcePath}.`);
   }
 
-  const command = profileOverride?.command ?? profileDefaults.command;
+  const command = profileEntry?.command ?? config.command;
 
   if (!command) {
     throw new Error(`No command is defined for profile "${selectedName}" in ${sourcePath}.`);
   }
 
-  const relativeCwd = overrideCwd ?? profileOverride?.cwd ?? profileDefaults.cwd ?? ".";
+  const relativeCwd = overrideCwd ?? profileEntry?.cwd ?? config.cwd ?? ".";
   const mergedEnv = {
-    ...(profileDefaults.env ?? {}),
-    ...(profileOverride?.env ?? {}),
+    ...(config.env ?? {}),
+    ...(profileEntry?.env ?? {}),
   };
 
   return {
@@ -361,7 +347,7 @@ export function resolveProfile(
     env: Object.fromEntries(Object.entries(mergedEnv).map(([key, value]) => [key, String(value)])),
     sourcePath,
     configDir,
-    description: profileOverride?.description,
+    description: profileEntry?.description,
   };
 }
 
@@ -370,10 +356,6 @@ export function renderProjectConfig(config: RunConfigFile): string {
 
   if (config.defaultProfile) {
     lines.push(`default_profile = ${toTomlString(config.defaultProfile)}`);
-  }
-
-  if (config.command) {
-    lines.push(`command = ${toTomlString(config.command)}`);
   }
 
   if (config.cwd) {
@@ -435,27 +417,37 @@ export function listProfiles(config: RunConfigFile): Array<{
     }
   >();
 
+  // Top-level command is a shorthand for profiles.default
   if (config.command) {
     profiles.set("default", {
       name: "default",
       command: config.command,
+      description: undefined,
       isDefault: !config.defaultProfile || config.defaultProfile === "default",
     });
   }
 
+  // Profile entries override or supplement the default
   for (const [name, profile] of Object.entries(config.profiles ?? {})) {
-    const command = profile.command ?? (name === "default" ? config.command : undefined);
-
-    if (!command) {
+    if (!profile.command) {
       continue;
     }
 
+    const existingIsDefault = profiles.get("default")?.isDefault ?? false;
     profiles.set(name, {
       name,
-      command,
+      command: profile.command,
       description: profile.description,
       isDefault: config.defaultProfile ? config.defaultProfile === name : name === "default",
     });
+
+    // If a profile named "default" exists, it takes over as the default
+    if (name === "default") {
+      const entry = profiles.get("default");
+      if (entry) {
+        entry.isDefault = true;
+      }
+    }
   }
 
   return [...profiles.values()].sort((left, right) => {
