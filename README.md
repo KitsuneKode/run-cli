@@ -88,9 +88,6 @@ npm install -g @kitsunekode/run-cli
 That exposes:
 
 - `run`
-- `runx`
-
-`runx` is the fallback alias if `run` collides with something in your shell.
 
 ### Install from source
 
@@ -204,7 +201,7 @@ run completion <zsh|bash>
 run doctor [--json]
 run profiles [--json]
 run up [args...] [-p <profile>] [--name <name>]
-run ps [--json]
+run ps [--json] [--details] [--watch]
 run dashboard
 run inspect <name|id> [--json]
 run logs <name|id> [--lines <n>] [--follow]
@@ -341,11 +338,12 @@ Managed process metadata includes:
 
 Performance behavior is intentional:
 
-- `run ps` and `run dashboard` are cheap overview commands
-- `run ps --details` opts into richer overview metrics
-- they avoid expensive per-process memory and port probing by default
+- `run ps` shows memory usage by default with color-coded status (green=running, yellow=stopped, red=exited)
+- `run ps --watch` live-refreshes the process list every 2 seconds
+- `run ps --details` adds port information alongside metrics
 - `run inspect` and `run ports` opt into more detailed process information
 - `run prune` removes dead (exited/stopped) processes from the registry
+- Memory thresholds warn at 512MB (yellow) and 1GB (red) in the MEM column
 
 This keeps the common path fast and low-overhead.
 
@@ -374,14 +372,17 @@ Typical workflow:
 Generate completion scripts from the CLI:
 
 ```bash
-run completion zsh > ~/.config/zsh/run.zsh
+mkdir -p ~/.config/zsh/completions
+run completion zsh > ~/.config/zsh/completions/_run
 run completion bash > ~/.config/bash/run.bash
 ```
 
 For Zsh:
 
 ```bash
-[[ ! -f ~/.config/zsh/run.zsh ]] || source ~/.config/zsh/run.zsh
+fpath=(~/.config/zsh/completions $fpath)
+autoload -Uz compinit
+compinit
 ```
 
 Checked-in loader scripts also exist in:
