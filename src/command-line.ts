@@ -1,4 +1,4 @@
-import { blue, bold, dim } from "./output.ts";
+import { blue, bold, dim, green } from "./output.ts";
 import type { ResolvedCommand, ResolvedProfile } from "./types.ts";
 
 function shellQuote(value: string): string {
@@ -24,7 +24,7 @@ export function resolveCommandLine(
 }
 
 export function renderMinimalBanner(commandLine: ResolvedCommand): string {
-  return `${bold(blue("run"))} ${dim("//")} ${commandLine.shellCommand}`;
+  return `${bold(blue("run"))} ${dim("→")} ${commandLine.shellCommand}`;
 }
 
 export function renderVerboseBanner(input: {
@@ -32,8 +32,21 @@ export function renderVerboseBanner(input: {
   commandLine: ResolvedCommand;
   cacheHit: boolean;
 }): string {
+  const cacheIndicator = input.cacheHit ? ` ${dim("(cached)")}` : "";
   return [
     renderMinimalBanner(input.commandLine),
-    `  profile=${input.profile.name} cwd=${input.profile.cwd} config=${input.profile.sourcePath}${input.cacheHit ? " cache" : ""}`,
+    `  ${dim("profile=")}${input.profile.name}  ${dim("cwd=")}${input.profile.cwd}  ${dim("config=")}${input.profile.sourcePath}${cacheIndicator}`,
+  ].join("\n");
+}
+
+export function renderProcessBanner(processRecord: {
+  name: string;
+  command: string;
+  logPath: string;
+}): string {
+  return [
+    `${bold(blue("run"))} ${green("started")} ${processRecord.name}`,
+    `  ${dim("command:")} ${processRecord.command}`,
+    `  ${dim("log:")} ${processRecord.logPath}`,
   ].join("\n");
 }

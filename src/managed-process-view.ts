@@ -1,3 +1,4 @@
+import { cyan, dim, green, red, yellow } from "./output.ts";
 import { formatDuration, formatMemory } from "./process-metrics.ts";
 import type { ManagedProcessSnapshot } from "./types.ts";
 
@@ -12,6 +13,41 @@ function padRows(headers: string[], rows: string[][]): string {
   return [renderRow(headers), ...rows.map(renderRow)].join("\n");
 }
 
+function statusLabel(status: string): string {
+  switch (status) {
+    case "running":
+      return green(status);
+    case "stopped":
+      return yellow(status);
+    case "exited":
+      return red(status);
+    default:
+      return dim(status);
+  }
+}
+
+function memoryLabel(
+  memoryRssKb: number | null,
+  thresholdWarn = 512 * 1024,
+  thresholdCritical = 1024 * 1024,
+): string {
+  if (memoryRssKb === null) {
+    return dim("-");
+  }
+
+  const formatted = formatMemory(memoryRssKb);
+
+  if (memoryRssKb >= thresholdCritical) {
+    return red(formatted);
+  }
+
+  if (memoryRssKb >= thresholdWarn) {
+    return yellow(formatted);
+  }
+
+  return formatted;
+}
+
 export function renderManagedProcessList(
   processes: ManagedProcessSnapshot[],
   options?: {
@@ -19,10 +55,10 @@ export function renderManagedProcessList(
   },
 ): string {
   if (processes.length === 0) {
-    return "No managed processes.\n";
+    return dim("No managed processes.\n");
   }
 
-  const showPorts = options?.showPorts ?? true;
+  const showPorts = options?.showPorts ?? false;
   const headers = showPorts
     ? ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PORTS", "PROJECT"]
     : ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PROJECT"];
@@ -31,20 +67,20 @@ export function renderManagedProcessList(
       ? [
           processRecord.name,
           processRecord.profile,
-          processRecord.status,
+          statusLabel(processRecord.status),
           String(processRecord.pid),
           formatDuration(processRecord.uptimeMs),
-          formatMemory(processRecord.memoryRssKb),
-          processRecord.ports.length > 0 ? processRecord.ports.join(",") : "-",
+          memoryLabel(processRecord.memoryRssKb),
+          processRecord.ports.length > 0 ? cyan(processRecord.ports.join(",")) : dim("-"),
           processRecord.projectName,
         ]
       : [
           processRecord.name,
           processRecord.profile,
-          processRecord.status,
+          statusLabel(processRecord.status),
           String(processRecord.pid),
           formatDuration(processRecord.uptimeMs),
-          formatMemory(processRecord.memoryRssKb),
+          memoryLabel(processRecord.memoryRssKb),
           processRecord.projectName,
         ],
   );
@@ -59,14 +95,17 @@ export function renderManagedDashboard(processes: ManagedProcessSnapshot[]): str
   const stoppedCount = processes.filter(
     (processRecord) => processRecord.status !== "running",
   ).length;
+  const totalMemoryKb = processes.reduce((sum, p) => sum + (p.memoryRssKb ?? 0), 0);
 
   return [
     "run dashboard",
-    `running=${runningCount} stopped=${stoppedCount} total=${processes.length} memory=lazy ports=lazy`,
+    `${green(String(runningCount))} running  ${yellow(String(stoppedCount))} stopped  ${dim("total=")}${processes.length}  ${dim("mem=")}${totalMemoryKb > 0 ? formatMemory(totalMemoryKb) : "-"}`,
     "",
     renderManagedProcessList(processes, { showPorts: false }).trimEnd(),
     "",
-    "Next: run inspect <name> | run logs <name> --follow | run ports | run stop <name> | run restart <name>",
+    dim(
+      "Next: run inspect <name> | run logs <name> --follow | run ports | run stop <name> | run restart <name>",
+    ),
     "",
   ].join("\n");
 }
@@ -76,12 +115,12 @@ export function renderManagedProcessDetails(processRecord: ManagedProcessSnapsho
     `name: ${processRecord.name}`,
     `project: ${processRecord.projectName}`,
     `profile: ${processRecord.profile}`,
-    `status: ${processRecord.status}`,
+    `status: ${statusLabel(processRecord.status)}`,
     `pid: ${processRecord.pid}`,
     `uptime: ${formatDuration(processRecord.uptimeMs)}`,
-    `memory: ${formatMemory(processRecord.memoryRssKb)}`,
-    `ports: ${processRecord.ports.length > 0 ? processRecord.ports.join(", ") : "-"}`,
-    `args: ${processRecord.commandArgs.length > 0 ? processRecord.commandArgs.join(" ") : "-"}`,
+    `memory: ${memoryLabel(processRecord.memoryRssKb)}`,
+    `ports: ${processRecord.ports.length > 0 ? cyan(processRecord.ports.join(", ")) : dim("-")}`,
+    `args: ${processRecord.commandArgs.length > 0 ? processRecord.commandArgs.join(" ") : dim("-")}`,
     `base command: ${processRecord.baseCommand}`,
     `command: ${processRecord.command}`,
     `cwd: ${processRecord.cwd}`,

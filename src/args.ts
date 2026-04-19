@@ -16,6 +16,7 @@ export interface ParsedArgs {
   json: boolean;
   details: boolean;
   follow: boolean;
+  watch: boolean;
   lines?: number;
   addProfiles: Array<{ name: string; command: string }>;
   profileName?: string;
@@ -40,6 +41,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     json: false,
     details: false,
     follow: false,
+    watch: false,
     addProfiles: [],
     commandArgs: [],
     verbose: false,
@@ -116,6 +118,10 @@ export function parseArgs(argv: string[]): ParsedArgs {
       case "--follow":
       case "-f":
         parsed.follow = true;
+        continue;
+      case "--watch":
+      case "-w":
+        parsed.watch = true;
         continue;
       case "--global":
         parsed.global = true;

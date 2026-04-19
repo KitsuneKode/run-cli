@@ -38,6 +38,14 @@ export function dim(value: string): string {
   return paint("2", value);
 }
 
+export function white(value: string): string {
+  return paint("37", value);
+}
+
+export function magenta(value: string): string {
+  return paint("35", value);
+}
+
 export function info(message: string): void {
   console.log(message);
 }

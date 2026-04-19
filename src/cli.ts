@@ -3,7 +3,12 @@ import path from "node:path";
 
 import { parseArgs } from "./args.ts";
 import { CacheStore } from "./cache.ts";
-import { renderMinimalBanner, renderVerboseBanner, resolveCommandLine } from "./command-line.ts";
+import {
+  renderMinimalBanner,
+  renderProcessBanner,
+  renderVerboseBanner,
+  resolveCommandLine,
+} from "./command-line.ts";
 import { renderBashCompletion, renderZshCompletion } from "./completion.ts";
 import {
   listProfiles,
@@ -24,7 +29,7 @@ import {
   renderManagedProcessDetails,
   renderManagedProcessList,
 } from "./managed-process-view.ts";
-import { dim, info, red, warn } from "./output.ts";
+import { dim, info, magenta, red, warn } from "./output.ts";
 import {
   restartManagedProcess,
   signalManagedProcess,
@@ -32,6 +37,8 @@ import {
 } from "./process-manager.ts";
 import { ProcessRegistry } from "./process-registry.ts";
 import type { GlobalConfig, ManagedProcessSnapshot, ResolvedConfig } from "./types.ts";
+
+const SAFE_HEAP_LIMIT_MB = 256;
 
 export async function run(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseArgs(argv);
@@ -41,6 +48,19 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
 
   if (parsed.help || firstPositional === "help") {
     printHelp();
+    return;
+  }
+
+  // Fail-fast: check CLI memory usage before doing any work
+  const memoryUsage = process.memoryUsage();
+  const heapUsedMB = memoryUsage.heapUsed / 1024 / 1024;
+  if (heapUsedMB > SAFE_HEAP_LIMIT_MB) {
+    console.error(
+      red(
+        `error: run-cli heap usage ${heapUsedMB.toFixed(1)}MB exceeds safe limit ${SAFE_HEAP_LIMIT_MB}MB. Restart the CLI.`,
+      ),
+    );
+    process.exitCode = 1;
     return;
   }
 
@@ -123,6 +143,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
           registry: new ProcessRegistry(),
           json: parsed.json,
           details: parsed.details,
+          watch: parsed.watch,
         });
         return;
       case "dashboard":
@@ -499,12 +520,10 @@ async function handleUpCommand(options: {
     nameOverride: options.name,
   });
 
-  info(`started ${processRecord.name}`);
-  info(`  command: ${processRecord.command}`);
-  info(`  log: ${processRecord.logPath}`);
+  info(renderProcessBanner(processRecord));
   info(
     dim(
-      `  next: run logs ${processRecord.name} --follow | run inspect ${processRecord.name} | run ps`,
+      `  ${dim("next:")} ${magenta("run logs")} ${processRecord.name} --follow  |  ${magenta("run inspect")} ${processRecord.name}  |  ${magenta("run ps")}`,
     ),
   );
 }
@@ -513,20 +532,40 @@ async function handlePsCommand(options: {
   registry: ProcessRegistry;
   json: boolean;
   details: boolean;
+  watch: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.withLock(() =>
-    options.registry.listSnapshots({
-      includePorts: options.details,
-      includeMemory: options.details,
-    }),
-  );
+  const renderAndPrint = async () => {
+    const snapshots = await options.registry.withLock(() =>
+      options.registry.listSnapshots({
+        includePorts: options.details,
+        includeMemory: true,
+      }),
+    );
 
-  if (options.json) {
-    info(`${JSON.stringify(snapshots, null, 2)}\n`);
-    return;
+    if (options.json) {
+      info(`${JSON.stringify(snapshots, null, 2)}\n`);
+      return;
+    }
+
+    info(renderManagedProcessList(snapshots, { showPorts: options.details }));
+  };
+
+  if (options.watch) {
+    // Clear screen and render in a loop
+    process.stdout.write("\x1B[?25l"); // hide cursor
+    process.on("SIGINT", () => {
+      process.stdout.write("\x1B[?25h"); // show cursor
+      process.exit(0);
+    });
+
+    while (true) {
+      process.stdout.write("\x1B[H\x1B[2J"); // clear screen
+      await renderAndPrint();
+      await Bun.sleep(2000);
+    }
   }
 
-  info(renderManagedProcessList(snapshots, { showPorts: options.details }));
+  await renderAndPrint();
 }
 
 async function handleDashboardCommand(options: {
@@ -535,7 +574,7 @@ async function handleDashboardCommand(options: {
   const snapshots = await options.registry.withLock(() =>
     options.registry.listSnapshots({
       includePorts: false,
-      includeMemory: false,
+      includeMemory: true,
     }),
   );
   info(renderManagedDashboard(snapshots));
@@ -845,7 +884,7 @@ Usage:
   run doctor [--json]
   run profiles [--json]
   run up [args...] [-p <profile>] [--name <name>]
-  run ps [--json]
+  run ps [--json] [--details] [--watch]
   run dashboard
   run inspect <name|id> [--json]
   run logs <name|id> [--lines <n>] [--follow]
@@ -869,7 +908,7 @@ Examples:
   run -- doctor
   run -p dev -- --port 3000
   run up -p worker
-  run ps --details
+  run ps --watch
   run init --yes --add-profile dev="bun --hot index.ts"
 
 Notes:
@@ -877,7 +916,8 @@ Notes:
   - Plain "run" executes the effective default profile for the project.
   - Profiles are explicit: use "run -p <profile>".
   - Use "--" to pass flags through to the underlying command.
-  - "run ps" is lightweight by default; use "run ps --details", "run inspect", or "run ports" for deeper process data.
+  - "run ps" shows memory by default; use "--watch" for live updates.
+  - "run ps --details" adds port information.
   - "run completion" prints shell completion scripts for Bash or Zsh.
   - "run up" starts a managed background process with logs, pid, uptime, memory, and ports.
   - "run dashboard" shows the current managed process cluster in one place.`);
