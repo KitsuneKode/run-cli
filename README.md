@@ -41,6 +41,40 @@ run -p worker
 
 If you want a named workflow, use `-p` or `--profile`.
 
+#### Profile Aliases and Command Suffixes
+
+Profiles can configure custom aliases in `.run.toml`:
+
+```toml
+[profiles.dev]
+command = "bun run dev.ts"
+alias = "d"
+```
+
+With this configured, you can execute the profile via `run -p d`.
+
+You can also run profiles directly by typing the alias suffix (e.g. `rund` or `run-d`):
+
+1. **Dynamic Shell Hook (Recommended):** Add an interceptor to your shell profile (`.zshrc` or `.bashrc`) so typing any `run*` command runs the matching profile seamlessly, bypassing node startup overhead:
+
+   ```bash
+   # For Zsh
+   eval "$(run completion --shell-hook zsh)"
+   
+   # For Bash
+   eval "$(run completion --shell-hook bash)"
+   ```
+
+   *Security Note:* Because shell hooks execute arbitrary `.run.toml` paths based on directory changes, `run` implements a trust gate. When entering a new project, you must explicitly approve the config by running `run trust` before shortcuts activate.
+
+2. **Explicit Symlinks:** Create a symlink in your `PATH` pointing to the `run` command:
+
+   ```bash
+   ln -s $(which run) ~/bin/rund
+   ```
+
+   The CLI resolves the calling executable name (`rund` -> suffix `d`), maps it to the `dev` profile, and executes it.
+
 ### 3. Child arguments
 
 Anything after `--` belongs to your app, not the CLI:

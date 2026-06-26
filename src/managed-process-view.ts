@@ -1,14 +1,21 @@
-import { cyan, dim, green, red, yellow } from "./output.ts";
+import { cyan, dim, green, red, stripAnsi, yellow } from "./output.ts";
 import { formatDuration, formatMemory } from "./process-metrics.ts";
 import type { ManagedProcessSnapshot } from "./types.ts";
 
 function padRows(headers: string[], rows: string[][]): string {
   const widths = headers.map((header, index) =>
-    Math.max(header.length, ...rows.map((row) => row[index]?.length ?? 0)),
+    Math.max(stripAnsi(header).length, ...rows.map((row) => stripAnsi(row[index] ?? "").length)),
   );
 
   const renderRow = (row: string[]) =>
-    row.map((cell, index) => cell.padEnd(widths[index] ?? cell.length)).join("  ");
+    row
+      .map((cell, index) => {
+        const visibleLength = stripAnsi(cell).length;
+        const targetWidth = widths[index] ?? visibleLength;
+        const padding = targetWidth - visibleLength;
+        return cell + " ".repeat(Math.max(0, padding));
+      })
+      .join("  ");
 
   return [renderRow(headers), ...rows.map(renderRow)].join("\n");
 }
@@ -59,9 +66,10 @@ export function renderManagedProcessList(
   }
 
   const showPorts = options?.showPorts ?? false;
-  const headers = showPorts
+  const rawHeaders = showPorts
     ? ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PORTS", "PROJECT"]
     : ["NAME", "PROFILE", "STATUS", "PID", "UPTIME", "MEM", "PROJECT"];
+  const headers = rawHeaders.map((h) => dim(h));
   const rows = processes.map((processRecord) =>
     showPorts
       ? [

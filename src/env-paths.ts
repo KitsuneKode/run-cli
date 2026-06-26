@@ -7,6 +7,7 @@ import {
   PROCESS_LOGS_RELATIVE_PATH,
   PROCESS_REGISTRY_RELATIVE_PATH,
   STATE_DIR_RELATIVE_PATH,
+  TRUST_REGISTRY_RELATIVE_PATH,
 } from "./constants.ts";
 
 export function getGlobalConfigPath(): string {
@@ -32,4 +33,9 @@ export function getProcessRegistryPath(): string {
 export function getProcessLogsDirPath(): string {
   const baseDir = process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state");
   return path.join(baseDir, PROCESS_LOGS_RELATIVE_PATH);
+}
+
+export function getTrustRegistryPath(): string {
+  const baseDir = process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state");
+  return path.join(baseDir, TRUST_REGISTRY_RELATIVE_PATH);
 }

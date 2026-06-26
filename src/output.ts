@@ -57,3 +57,9 @@ export function warn(message: string): void {
 export function fail(message: string): never {
   throw new Error(message);
 }
+
+export function stripAnsi(value: string): string {
+  // Matches all ANSI escape sequences
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally matching ANSI escape code
+  return value.replace(/\x1B\[\d+m/g, "");
+}

@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 
+RUN_INVOKED_AS=$(basename "$0")
+export RUN_INVOKED_AS
+
 resolve_script_dir() {
   target=$1
 

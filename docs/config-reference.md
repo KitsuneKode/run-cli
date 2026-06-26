@@ -49,10 +49,12 @@ description = "stable default entrypoint"
 [profiles.dev]
 command = "bun --hot src/index.ts"
 description = "local development server"
+alias = "d"
 
 [profiles.worker]
 command = "bun run src/worker.ts"
 cwd = "services/worker"
+alias = ["w", "queue-worker"]
 
 [profiles.worker.env]
 QUEUE_NAME = "jobs"
@@ -63,10 +65,11 @@ Rules:
 
 - plain `run` executes `default_profile` when set
 - if `default_profile` is omitted, `profiles.default` or legacy top-level `command` is used
-- invoke profiles as `run -p <name>`
+- invoke profiles as `run -p <name>` or via configured profile aliases: `run -p <alias>`
+- support dynamic suffix invocations (e.g. `rund` or `run-d` mapping to profile with alias `d`)
 - pass runtime args as `run -- <args...>` or `run -p <name> -- <args...>`
 - top-level `cwd` and `env` act as defaults for profiles
-- profile names cannot be `init`, `config`, `doctor`, or `help`
+- profile names and aliases cannot conflict with reserved commands: `init`, `config`, `doctor`, `help`, `up`, `ps`, `logs`, `stop`, `restart`, `kill`, `dashboard`, `inspect`, `ports`, `profiles`, `prune`, `completion`
 - only the nearest project config is used
 
 ## Global config

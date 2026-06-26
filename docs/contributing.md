@@ -31,7 +31,7 @@ The canonical user contract is:
 
 - `.run.toml` is the project config
 - plain `run` executes the default profile command
-- profiles are explicit via `-p` / `--profile`
+- profiles are explicit via `-p` / `--profile`, or dynamically routed via configured profile aliases
 - `--` forwards remaining args to the child command untouched
 - `run up` mirrors the same contract for managed processes
 

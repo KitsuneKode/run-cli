@@ -3,6 +3,7 @@ import { closeSync, mkdirSync, openSync } from "node:fs";
 
 import { resolveCommandLine } from "./command-line.ts";
 import { FALLBACK_SHELL } from "./constants.ts";
+import { sleep } from "./fs.ts";
 import { getProcessStartTime, isProcessRunning } from "./process-metrics.ts";
 import type { ProcessRegistry } from "./process-registry.ts";
 import { detectProjectName } from "./project-name.ts";
@@ -68,7 +69,7 @@ export async function terminateProcess(
       return;
     }
 
-    await Bun.sleep(termPollInterval);
+    await sleep(termPollInterval);
   }
 
   // Phase 2: SIGKILL
@@ -81,7 +82,7 @@ export async function terminateProcess(
       return;
     }
 
-    await Bun.sleep(killPollInterval);
+    await sleep(killPollInterval);
   }
 
   // Phase 3: give up

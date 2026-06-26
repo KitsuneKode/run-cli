@@ -1,5 +1,6 @@
 import { constants, closeSync, mkdirSync, openSync, statSync, unlinkSync } from "node:fs";
 import path from "node:path";
+import { sleep } from "./fs.ts";
 
 interface LockOptions {
   maxRetries?: number;
@@ -52,7 +53,7 @@ export async function acquireFileLock(filePath: string, options?: LockOptions): 
       }
 
       if (attempt < maxRetries) {
-        await Bun.sleep(retryIntervalMs);
+        await sleep(retryIntervalMs);
       }
     }
   }

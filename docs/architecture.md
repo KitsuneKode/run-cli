@@ -5,7 +5,9 @@
 `run-cli` is a Bun-native CLI with a small TypeScript module graph:
 
 - `src/cli.ts`: command routing, migration guidance, banners, and user-facing flows
-- `src/args.ts`: low-overhead argument parsing with explicit profile flags and passthrough args
+- `src/args.ts`: low-overhead argument parsing driven by central declarative schemas
+- `src/command.ts`: declarative CLI command definition interfaces and types
+- `src/context.ts`: WorkspaceContext encapsulating config, cache, and state orchestration
 - `src/config.ts`: TOML parsing, validation, config lookup, and profile resolution
 - `src/command-line.ts`: shared command construction and banner rendering
 - `src/detect.ts`: project-root detection and suggestion heuristics
@@ -42,6 +44,7 @@ The active invocation model is intentionally strict:
 
 - `run [args...]` forwards args to the effective default command
 - `run -p <profile> [args...]` selects a named profile explicitly
+- `run` and its command symlinks/aliases support suffix profile matching (e.g. `rund` executes profile with alias `d`) and can be triggered via `--invoked-as <command>` or `$RUN_INVOKED_AS`
 - `run up` mirrors the same contract for managed processes
 - `--` ends CLI parsing and forwards all remaining args untouched
 

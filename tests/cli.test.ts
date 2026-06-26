@@ -74,6 +74,44 @@ describe("cli integration", () => {
     expect(result.stdout.trim()).toBe("echo hello 'world'");
   });
 
+  test("resolves profile from binary name or invoked-as parameter", async () => {
+    const projectRoot = await createTempProject("run-cli-invoked");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      [
+        "version = 1",
+        "",
+        "[profiles.dev]",
+        'command = "echo dev-mode"',
+        'alias = "d"',
+        "",
+        "[profiles.build]",
+        'command = "echo build-mode"',
+        'alias = "b"',
+      ].join("\n"),
+    );
+
+    const result1 = await runCli(
+      ["--cwd", projectRoot, "--dry-run", "--invoked-as", "rund"],
+      projectRoot,
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+    );
+    expect(result1.exitCode).toBe(0);
+    expect(result1.stdout).toContain("echo dev-mode");
+
+    const result2 = await runCli(["--cwd", projectRoot, "--dry-run"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      RUN_INVOKED_AS: "runb",
+    });
+    expect(result2.exitCode).toBe(0);
+    expect(result2.stdout).toContain("echo build-mode");
+  });
+
   test("shows a migration error for old positional profile usage", async () => {
     const projectRoot = await createTempProject("run-cli-migrate");
 
@@ -260,5 +298,45 @@ describe("cli integration", () => {
 
     expect(result.stdout).toContain("echo current");
     expect(result.stdout).not.toContain("echo legacy");
+  });
+
+  test("forwards unknown flags directly to child command without double dashes", async () => {
+    const projectRoot = await createTempProject("run-cli-forward-flags");
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", "", "[profiles.test]", 'command = "bun run test"', 'alias = "t"'].join("\n"),
+    );
+
+    // Invoke as runt --cli
+    const result1 = await runCli(["--cwd", projectRoot, "--dry-run", "--cli"], projectRoot, {
+      XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+      XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      RUN_INVOKED_AS: "runt",
+    });
+    expect(result1.exitCode).toBe(0);
+    expect(result1.stdout.trim()).toBe("bun run test '--cli'");
+
+    // Invoke as run -p test --cli --mode=prod
+    const result2 = await runCli(
+      ["--cwd", projectRoot, "-p", "test", "--dry-run", "--cli", "--mode=prod"],
+      projectRoot,
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+    );
+    expect(result2.exitCode).toBe(0);
+    expect(result2.stdout.trim()).toBe("bun run test '--cli' '--mode=prod'");
+  });
+
+  test("prints shell hook completion scripts without syntax errors", async () => {
+    const resultZsh = await runCli(["completion", "zsh", "--shell-hook"], os.tmpdir());
+    expect(resultZsh.exitCode).toBe(0);
+    expect(resultZsh.stdout).toContain("_run_hook_chpwd");
+
+    const resultBash = await runCli(["completion", "bash", "--shell-hook"], os.tmpdir());
+    expect(resultBash.exitCode).toBe(0);
+    expect(resultBash.stdout).toContain("_run_hook_update");
   });
 });

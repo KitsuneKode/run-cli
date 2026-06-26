@@ -10,7 +10,7 @@ import {
   RESERVED_COMMANDS,
 } from "./constants.ts";
 import { getGlobalConfigPath } from "./env-paths.ts";
-import { pathExists, readTextFile, walkUpDirectories } from "./fs.ts";
+import { parseToml, pathExists, readTextFile, walkUpDirectories } from "./fs.ts";
 import type {
   EnvMap,
   GlobalConfig,
@@ -53,7 +53,7 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
   let parsed: unknown;
 
   try {
-    parsed = Bun.TOML.parse(rawText);
+    parsed = parseToml(rawText);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to parse ${sourcePath}: ${message}`);
@@ -122,6 +122,7 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         cwd?: string;
         env?: EnvMap;
         description?: string;
+        alias?: string | string[];
       } = {};
 
       if (profileValue.command !== undefined) {
@@ -153,6 +154,32 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         }
 
         profile.description = profileValue.description;
+      }
+
+      if (profileValue.alias !== undefined) {
+        if (typeof profileValue.alias === "string") {
+          if (profileValue.alias.trim() === "") {
+            throw new Error(
+              `${sourcePath} profiles.${profileName}.alias must be a non-empty string.`,
+            );
+          }
+          profile.alias = profileValue.alias;
+        } else if (Array.isArray(profileValue.alias)) {
+          const list: string[] = [];
+          for (const item of profileValue.alias) {
+            if (typeof item !== "string" || item.trim() === "") {
+              throw new Error(
+                `${sourcePath} profiles.${profileName}.alias array must contain only non-empty strings.`,
+              );
+            }
+            list.push(item);
+          }
+          profile.alias = list;
+        } else {
+          throw new Error(
+            `${sourcePath} profiles.${profileName}.alias must be a string or an array of strings.`,
+          );
+        }
       }
 
       profile.env = assertEnvMap(profileValue.env, `profiles.${profileName}.env`);
@@ -188,7 +215,7 @@ export async function readGlobalConfig(): Promise<GlobalConfig> {
     };
   }
 
-  const parsed = Bun.TOML.parse(await readTextFile(configPath));
+  const parsed = parseToml(await readTextFile(configPath));
 
   if (!isPlainObject(parsed)) {
     throw new Error(`${configPath} must contain a TOML object.`);
@@ -321,7 +348,20 @@ export function resolveProfile(
   overrideCwd?: string,
 ): ResolvedProfile {
   const { config, configDir, sourcePath } = resolvedConfig;
-  const selectedName = profileName ?? config.defaultProfile ?? "default";
+  let selectedName = profileName ?? config.defaultProfile ?? "default";
+
+  if (profileName && config.profiles && !config.profiles[selectedName]) {
+    for (const [key, profile] of Object.entries(config.profiles)) {
+      if (profile.alias) {
+        const aliases = Array.isArray(profile.alias) ? profile.alias : [profile.alias];
+        if (aliases.includes(profileName)) {
+          selectedName = key;
+          break;
+        }
+      }
+    }
+  }
+
   const profileEntry = config.profiles?.[selectedName];
 
   if (!profileEntry?.command && !(selectedName === "default" && config.command)) {
@@ -461,6 +501,63 @@ export function listProfiles(config: RunConfigFile): Array<{
 
     return left.name.localeCompare(right.name);
   });
+}
+
+/**
+ * Pattern for valid shortcut suffixes. Must be alphanumeric + dash/underscore,
+ * starting with a letter or digit, max 60 chars (leaving room for "run" prefix).
+ * This is validated both here and in the shell hook script for defence-in-depth.
+ */
+const SHORTCUT_SUFFIX_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,59}$/;
+
+/**
+ * Compute every shell function name that the shell hook should register for the
+ * current project config. Returns names like "rund", "run-d", "rundev", "run-dev".
+ *
+ * Rules:
+ * - Every profile name that is not "default" becomes run<name> and run-<name>
+ * - Every alias on a profile becomes run<alias> and run-<alias>
+ * - Names colliding with RESERVED_COMMANDS are silently skipped
+ * - Suffixes not matching SHORTCUT_SUFFIX_RE are silently skipped
+ * - Results are deduplicated and sorted
+ */
+export function listShortcutNames(config: RunConfigFile): string[] {
+  const suffixes = new Set<string>();
+
+  for (const [name, profile] of Object.entries(config.profiles ?? {})) {
+    if (!profile.command) continue;
+
+    // Profile name itself is an implicit suffix (except "default" which is too
+    // generic to be a useful command name)
+    if (name !== "default" && SHORTCUT_SUFFIX_RE.test(name)) {
+      suffixes.add(name);
+    }
+
+    // Declared aliases
+    if (profile.alias) {
+      const aliases = Array.isArray(profile.alias) ? profile.alias : [profile.alias];
+      for (const alias of aliases) {
+        if (typeof alias === "string" && SHORTCUT_SUFFIX_RE.test(alias)) {
+          suffixes.add(alias);
+        }
+      }
+    }
+  }
+
+  const names: string[] = [];
+
+  for (const suffix of suffixes) {
+    // Skip suffixes that would produce names shadowing reserved commands
+    if (RESERVED_COMMANDS.has(suffix)) continue;
+
+    // Both dash-separated and concatenated forms
+    const dashForm = `run-${suffix}`;
+    const concatForm = `run${suffix}`;
+
+    names.push(dashForm, concatForm);
+  }
+
+  return [...new Set(names)].sort();
 }
 
 export function renderGlobalConfig(config: Partial<GlobalConfig>): string {

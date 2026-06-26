@@ -6,6 +6,7 @@ export interface ProfileConfig {
   cwd?: string;
   env?: EnvMap;
   description?: string;
+  alias?: string | string[];
 }
 
 export interface RunConfigFile {
@@ -120,4 +121,17 @@ export interface ManagedProcessSnapshot extends ManagedProcessRecord {
   uptimeMs: number;
   memoryRssKb: number | null;
   ports: number[];
+}
+
+export interface TrustEntry {
+  /** SHA-256 hex digest of the config file contents at time of trust */
+  sha256: string;
+  /** ISO-8601 timestamp when trust was granted */
+  trustedAt: string;
+}
+
+export interface TrustRegistry {
+  version: number;
+  /** Keyed by absolute path to the .run.toml file */
+  entries: Record<string, TrustEntry>;
 }

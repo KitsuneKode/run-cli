@@ -13,6 +13,7 @@
 - Config: `.run.toml` (canonical). `.run.config.toml` is legacy migration only.
 - `run [args...]` executes the default profile command, forwarding args.
 - `run -p <profile>` selects a named profile. Never positional profile guessing.
+- `run` and its command symlinks/aliases support suffix profile matching (e.g. `rund` executes profile with alias `d`) and can be triggered via `--invoked-as <command>` or `$RUN_INVOKED_AS`
 - `run up` mirrors the same contract for managed background processes.
 - `--` ends CLI parsing; everything after goes to the child command untouched.
 

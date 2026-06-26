@@ -2,27 +2,26 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 import { parseArgs } from "./args.ts";
-import { CacheStore } from "./cache.ts";
 import {
   renderMinimalBanner,
   renderProcessBanner,
   renderVerboseBanner,
   resolveCommandLine,
 } from "./command-line.ts";
-import { renderBashCompletion, renderZshCompletion } from "./completion.ts";
 import {
-  listProfiles,
-  readGlobalConfig,
-  renderGlobalConfig,
-  resolveProfile,
-  resolveProjectConfig,
-} from "./config.ts";
+  renderBashCompletion,
+  renderBashShellHook,
+  renderZshCompletion,
+  renderZshShellHook,
+} from "./completion.ts";
+import { listProfiles, listShortcutNames, renderGlobalConfig, resolveProfile } from "./config.ts";
 import { CONFIG_FILE_NAME, FALLBACK_SHELL, RESERVED_COMMANDS } from "./constants.ts";
+import { WorkspaceContext } from "./context.ts";
 import { detectProject } from "./detect.ts";
 import { doctorReportData, renderDoctorReport } from "./doctor.ts";
 import { getGlobalConfigPath } from "./env-paths.ts";
 import { runResolvedProfile } from "./exec.ts";
-import { pathExists, readTextFile, writeTextFile } from "./fs.ts";
+import { pathExists, readTextFile, sleep, writeTextFile } from "./fs.ts";
 import { runInit } from "./init.ts";
 import {
   renderManagedDashboard,
@@ -36,14 +35,24 @@ import {
   startManagedProcess,
 } from "./process-manager.ts";
 import { ProcessRegistry } from "./process-registry.ts";
+import {
+  findNearestExistingConfig,
+  isConfigTrusted,
+  listTrustedConfigs,
+  revokeConfigTrust,
+  trustConfig,
+} from "./trust.ts";
 import type { GlobalConfig, ManagedProcessSnapshot, ResolvedConfig } from "./types.ts";
 
 const SAFE_HEAP_LIMIT_MB = 256;
 
 export async function run(argv = process.argv.slice(2)): Promise<void> {
   const parsed = parseArgs(argv);
-  const cacheStore = new CacheStore();
-  const cwd = path.resolve(parsed.cwd ?? process.cwd());
+  const ctx = new WorkspaceContext({
+    cwd: parsed.cwd ?? process.cwd(),
+    explicitConfigPath: parsed.configPath,
+    noCache: parsed.noCache,
+  });
   const [firstPositional, secondPositional] = parsed.positionals;
 
   if (parsed.help || firstPositional === "help") {
@@ -67,12 +76,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   try {
     switch (firstPositional) {
       case "init": {
-        const globalConfig = await readGlobalConfig();
-        const useCache = !parsed.noCache && globalConfig.cache;
-        await handleInitCommand({
-          cwd,
-          useCache,
-          cacheStore,
+        await handleInitCommand(ctx, {
           force: parsed.force,
           yes: parsed.yes,
           command: parsed.command,
@@ -83,57 +87,43 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         return;
       }
       case "config": {
-        const globalConfig = await readGlobalConfig();
-        const useCache = !parsed.noCache && globalConfig.cache;
-        await handleConfigCommand({
+        await handleConfigCommand(ctx, {
           action: secondPositional,
-          cwd,
           global: parsed.global,
-          cacheStore,
-          globalConfig,
-          useCache,
         });
         return;
       }
       case "completion":
-        handleCompletionCommand(secondPositional);
+        handleCompletionCommand(secondPositional, parsed.shellHook);
         return;
       case "doctor": {
-        const globalConfig = await readGlobalConfig();
-        const useCache = !parsed.noCache && globalConfig.cache;
-        await handleDoctorCommand({
-          cwd,
-          explicitConfigPath: parsed.configPath,
-          cacheStore,
-          globalConfig,
-          useCache,
+        await handleDoctorCommand(ctx, {
           json: parsed.json,
         });
         return;
       }
       case "profiles": {
-        const globalConfig = await readGlobalConfig();
-        const useCache = !parsed.noCache && globalConfig.cache;
-        await handleProfilesCommand({
-          cwd,
-          explicitConfigPath: parsed.configPath,
-          cacheStore,
-          useCache,
+        // --shortcuts flag: print one shortcut name per line for shell hook
+        if (parsed.shortcuts) {
+          await handleProfileShortcutsCommand(ctx);
+          return;
+        }
+        await handleProfilesCommand(ctx, {
+          json: parsed.json,
+        });
+        return;
+      }
+      case "trust": {
+        await handleTrustCommand(ctx, {
+          action: secondPositional,
           json: parsed.json,
         });
         return;
       }
       case "up": {
-        const globalConfig = await readGlobalConfig();
-        const useCache = !parsed.noCache && globalConfig.cache;
-        await handleUpCommand({
-          cwd,
+        await handleUpCommand(ctx, {
           profileName: parsed.profileName,
           commandArgs: parsed.commandArgs,
-          explicitConfigPath: parsed.configPath,
-          cacheStore,
-          globalConfig,
-          useCache,
           name: parsed.name,
         });
         return;
@@ -191,11 +181,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "restart":
         await requireIdentifier("restart", secondPositional);
         {
-          const globalConfig = await readGlobalConfig();
-          await handleRestartCommand({
+          await handleRestartCommand(ctx, {
             identifier: secondPositional ?? "",
             registry: new ProcessRegistry(),
-            globalConfig,
           });
           return;
         }
@@ -232,16 +220,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         }
 
         {
-          const globalConfig = await readGlobalConfig();
-          const useCache = !parsed.noCache && globalConfig.cache;
-          await handleRunCommand({
-            cwd,
+          await handleRunCommand(ctx, {
             profileName: parsed.profileName,
             commandArgs: parsed.commandArgs,
-            explicitConfigPath: parsed.configPath,
-            cacheStore,
-            globalConfig,
-            useCache,
             dryRun: parsed.dryRun,
             verbose: parsed.verbose,
           });
@@ -254,26 +235,27 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
   }
 }
 
-async function handleInitCommand(options: {
-  cwd: string;
-  useCache: boolean;
-  cacheStore: CacheStore;
-  force: boolean;
-  yes: boolean;
-  command?: string;
-  defaultProfile?: string;
-  profiles: Array<{ name: string; command: string }>;
-  usedDeprecatedProfileFlag: boolean;
-}): Promise<void> {
+async function handleInitCommand(
+  ctx: WorkspaceContext,
+  options: {
+    force: boolean;
+    yes: boolean;
+    command?: string;
+    defaultProfile?: string;
+    profiles: Array<{ name: string; command: string }>;
+    usedDeprecatedProfileFlag: boolean;
+  },
+): Promise<void> {
+  const useCache = await ctx.useCache();
   const result = await runInit({
-    cwd: options.cwd,
-    useCache: options.useCache,
+    cwd: ctx.cwd,
+    useCache,
     force: options.force,
     yes: options.yes,
     command: options.command,
     defaultProfile: options.defaultProfile,
     profiles: options.profiles,
-    cacheStore: options.cacheStore,
+    cacheStore: ctx.cacheStore,
   });
 
   info(`created ${result.path}`);
@@ -293,37 +275,30 @@ async function handleInitCommand(options: {
     }
   }
 
-  if (options.useCache) {
-    await options.cacheStore.save();
-  }
+  await ctx.saveCacheIfNeeded();
 }
 
-async function handleDoctorCommand(options: {
-  cwd: string;
-  explicitConfigPath?: string;
-  cacheStore: CacheStore;
-  globalConfig: GlobalConfig;
-  useCache: boolean;
-  json: boolean;
-}): Promise<void> {
-  const projectConfig = await resolveProjectConfig({
-    cwd: options.cwd,
-    explicitConfigPath: options.explicitConfigPath,
-    useCache: options.useCache,
-    cacheStore: options.cacheStore,
-  });
+async function handleDoctorCommand(
+  ctx: WorkspaceContext,
+  options: {
+    json: boolean;
+  },
+): Promise<void> {
+  const projectConfig = await ctx.getProjectConfig();
+  const useCache = await ctx.useCache();
   const detectedProject = await detectProject({
-    cwd: options.cwd,
-    useCache: options.useCache,
-    cacheStore: options.cacheStore,
+    cwd: ctx.cwd,
+    useCache,
+    cacheStore: ctx.cacheStore,
   });
+  const globalConfig = await ctx.getGlobalConfig();
 
   if (options.json) {
     info(
       `${JSON.stringify(
         doctorReportData({
-          cwd: options.cwd,
-          globalConfig: options.globalConfig,
+          cwd: ctx.cwd,
+          globalConfig,
           projectConfig,
           detectedProject,
         }),
@@ -334,58 +309,50 @@ async function handleDoctorCommand(options: {
   } else {
     info(
       renderDoctorReport({
-        cwd: options.cwd,
-        globalConfig: options.globalConfig,
+        cwd: ctx.cwd,
+        globalConfig,
         projectConfig,
         detectedProject,
       }),
     );
   }
 
-  if (options.useCache) {
-    await options.cacheStore.save();
-  }
+  await ctx.saveCacheIfNeeded();
 }
 
-function handleCompletionCommand(shell: string | undefined): void {
+function handleCompletionCommand(shell: string | undefined, shellHook = false): void {
   switch (shell) {
     case "zsh":
-      info(renderZshCompletion());
+      info(shellHook ? renderZshShellHook() : renderZshCompletion());
       return;
     case "bash":
-      info(renderBashCompletion());
+      info(shellHook ? renderBashShellHook() : renderBashCompletion());
       return;
     default:
-      throw new Error("Usage: run completion <zsh|bash>");
+      throw new Error("Usage: run completion <zsh|bash> [--shell-hook]");
   }
 }
 
-async function handleRunCommand(options: {
-  cwd: string;
-  profileName?: string;
-  commandArgs: string[];
-  explicitConfigPath?: string;
-  cacheStore: CacheStore;
-  globalConfig: GlobalConfig;
-  useCache: boolean;
-  dryRun: boolean;
-  verbose: boolean;
-}): Promise<void> {
-  const resolvedConfig = await resolveProjectConfig({
-    cwd: options.cwd,
-    explicitConfigPath: options.explicitConfigPath,
-    useCache: options.useCache,
-    cacheStore: options.cacheStore,
-  });
+async function handleRunCommand(
+  ctx: WorkspaceContext,
+  options: {
+    profileName?: string;
+    commandArgs: string[];
+    dryRun: boolean;
+    verbose: boolean;
+  },
+): Promise<void> {
+  const resolvedConfig = await ctx.getProjectConfig();
 
   if (!resolvedConfig) {
+    const useCache = await ctx.useCache();
     const detectedProject = await detectProject({
-      cwd: options.cwd,
-      useCache: options.useCache,
-      cacheStore: options.cacheStore,
+      cwd: ctx.cwd,
+      useCache,
+      cacheStore: ctx.cacheStore,
     });
 
-    warn(`No ${CONFIG_FILE_NAME} was found above ${options.cwd}.`);
+    warn(`No ${CONFIG_FILE_NAME} was found above ${ctx.cwd}.`);
 
     if (detectedProject?.suggestions.length) {
       info(`Detected project root: ${detectedProject.root}`);
@@ -404,9 +371,7 @@ async function handleRunCommand(options: {
     info('Run "run init" to choose one of the detected commands or enter your own.');
     info("Run \"run init --command '<your command>'\" to write a custom command directly.");
 
-    if (options.useCache) {
-      await options.cacheStore.save();
-    }
+    await ctx.saveCacheIfNeeded();
 
     process.exitCode = 1;
     return;
@@ -451,14 +416,13 @@ async function handleRunCommand(options: {
     }
   }
 
-  const exitCode = await runResolvedProfile(profile, options.globalConfig, {
+  const globalConfig = await ctx.getGlobalConfig();
+  const exitCode = await runResolvedProfile(profile, globalConfig, {
     dryRun: options.dryRun,
     args: options.commandArgs,
   });
 
-  if (options.useCache) {
-    await options.cacheStore.save();
-  }
+  await ctx.saveCacheIfNeeded();
 
   process.exitCode = exitCode;
 }
@@ -494,28 +458,22 @@ async function maybeHandlePositionalProfileMigration(options: {
   );
 }
 
-async function handleUpCommand(options: {
-  cwd: string;
-  profileName?: string;
-  commandArgs: string[];
-  explicitConfigPath?: string;
-  cacheStore: CacheStore;
-  globalConfig: GlobalConfig;
-  useCache: boolean;
-  name?: string;
-}): Promise<void> {
-  const resolvedConfig = await requireResolvedConfig({
-    cwd: options.cwd,
-    explicitConfigPath: options.explicitConfigPath,
-    cacheStore: options.cacheStore,
-    useCache: options.useCache,
-  });
+async function handleUpCommand(
+  ctx: WorkspaceContext,
+  options: {
+    profileName?: string;
+    commandArgs: string[];
+    name?: string;
+  },
+): Promise<void> {
+  const resolvedConfig = await requireResolvedConfig(ctx);
   const profile = resolveProfile(resolvedConfig, options.profileName);
   const registry = new ProcessRegistry();
+  const globalConfig = await ctx.getGlobalConfig();
   const processRecord = await startManagedProcess({
     profile,
     args: options.commandArgs,
-    globalConfig: options.globalConfig,
+    globalConfig,
     registry,
     nameOverride: options.name,
   });
@@ -561,7 +519,7 @@ async function handlePsCommand(options: {
     while (true) {
       process.stdout.write("\x1B[H\x1B[2J"); // clear screen
       await renderAndPrint();
-      await Bun.sleep(2000);
+      await sleep(2000);
     }
   }
 
@@ -631,19 +589,13 @@ async function handlePortsCommand(options: {
   }
 }
 
-async function handleProfilesCommand(options: {
-  cwd: string;
-  explicitConfigPath?: string;
-  cacheStore: CacheStore;
-  useCache: boolean;
-  json: boolean;
-}): Promise<void> {
-  const resolvedConfig = await requireResolvedConfig({
-    cwd: options.cwd,
-    explicitConfigPath: options.explicitConfigPath,
-    cacheStore: options.cacheStore,
-    useCache: options.useCache,
-  });
+async function handleProfilesCommand(
+  ctx: WorkspaceContext,
+  options: {
+    json: boolean;
+  },
+): Promise<void> {
+  const resolvedConfig = await requireResolvedConfig(ctx);
   const profiles = listProfiles(resolvedConfig.config);
 
   if (options.json) {
@@ -658,6 +610,87 @@ async function handleProfilesCommand(options: {
       }`,
     );
   }
+}
+
+async function handleProfileShortcutsCommand(ctx: WorkspaceContext): Promise<void> {
+  const resolvedConfig = await requireResolvedConfig(ctx);
+  const names = listShortcutNames(resolvedConfig.config);
+  for (const name of names) {
+    info(name);
+  }
+}
+
+async function handleTrustCommand(
+  ctx: WorkspaceContext,
+  options: {
+    action: string | undefined;
+    json: boolean;
+  },
+): Promise<void> {
+  const action = options.action ?? "trust";
+
+  // --check: silent exit-code check used by the shell hook
+  if (action === "--check") {
+    const configPath = await findNearestExistingConfig(ctx.cwd);
+    if (!configPath) {
+      process.exitCode = 1;
+      return;
+    }
+    const trusted = await isConfigTrusted(configPath);
+    if (!trusted) {
+      process.exitCode = 1;
+    }
+    return;
+  }
+
+  // trust (default positional or no positional)
+  if (action === "trust" || action === undefined) {
+    const configPath = await findNearestExistingConfig(ctx.cwd);
+    if (!configPath) {
+      throw new Error(`No .run.toml found above ${ctx.cwd}. Nothing to trust.`);
+    }
+    const entry = await trustConfig(configPath);
+    info(`Trusted ${configPath}`);
+    info(`  sha256: ${entry.sha256}`);
+    info(`  trusted at: ${entry.trustedAt}`);
+    return;
+  }
+
+  if (action === "--revoke" || action === "revoke") {
+    const configPath = await findNearestExistingConfig(ctx.cwd);
+    if (!configPath) {
+      throw new Error(`No .run.toml found above ${ctx.cwd}.`);
+    }
+    const removed = await revokeConfigTrust(configPath);
+    if (removed) {
+      info(`Revoked trust for ${configPath}`);
+    } else {
+      info(`${configPath} was not trusted.`);
+    }
+    return;
+  }
+
+  if (action === "--list" || action === "list") {
+    const entries = await listTrustedConfigs();
+    if (options.json) {
+      info(`${JSON.stringify(entries, null, 2)}\n`);
+      return;
+    }
+    if (entries.length === 0) {
+      info("No trusted configs.");
+      return;
+    }
+    for (const entry of entries) {
+      info(`${entry.configPath}`);
+      info(`  sha256:     ${entry.sha256}`);
+      info(`  trusted at: ${entry.trustedAt}`);
+    }
+    return;
+  }
+
+  throw new Error(
+    `Unknown trust action: "${action}". Use: run trust | run trust --check | run trust --revoke | run trust --list`,
+  );
 }
 
 async function handleSignalCommand(options: {
@@ -676,13 +709,16 @@ async function handleSignalCommand(options: {
   info(`${options.verb} ${processRecord.name}`);
 }
 
-async function handleRestartCommand(options: {
-  identifier: string;
-  registry: ProcessRegistry;
-  globalConfig: GlobalConfig;
-}): Promise<void> {
+async function handleRestartCommand(
+  ctx: WorkspaceContext,
+  options: {
+    identifier: string;
+    registry: ProcessRegistry;
+  },
+): Promise<void> {
+  const globalConfig = await ctx.getGlobalConfig();
   const processRecord = await restartManagedProcess(options.registry, options.identifier, {
-    globalConfig: options.globalConfig,
+    globalConfig,
   });
   info(`restarted ${processRecord.name}`);
   info(`  pid: ${processRecord.pid}`);
@@ -726,17 +762,18 @@ async function handleLogsCommand(options: {
   info(`${lines.join("\n")}\n`);
 }
 
-async function handleConfigCommand(options: {
-  action?: string;
-  cwd: string;
-  global: boolean;
-  cacheStore: CacheStore;
-  globalConfig: GlobalConfig;
-  useCache: boolean;
-}): Promise<void> {
+async function handleConfigCommand(
+  ctx: WorkspaceContext,
+  options: {
+    action?: string;
+    global: boolean;
+  },
+): Promise<void> {
   if (!options.action || !["view", "path", "edit", "validate"].includes(options.action)) {
     throw new Error("Usage: run config <view|path|edit|validate> [--global]");
   }
+
+  const globalConfig = await ctx.getGlobalConfig();
 
   if (options.global) {
     const globalConfigPath = getGlobalConfigPath();
@@ -760,15 +797,11 @@ async function handleConfigCommand(options: {
       await writeTextFile(globalConfigPath, renderGlobalConfig({ cache: true }));
     }
 
-    await openInEditor(globalConfigPath, options.globalConfig);
+    await openInEditor(globalConfigPath, globalConfig);
     return;
   }
 
-  const resolvedConfig = await requireResolvedConfig({
-    cwd: options.cwd,
-    cacheStore: options.cacheStore,
-    useCache: options.useCache,
-  });
+  const resolvedConfig = await requireResolvedConfig(ctx);
 
   if (options.action === "path") {
     info(resolvedConfig.sourcePath);
@@ -777,11 +810,7 @@ async function handleConfigCommand(options: {
 
   if (options.action === "view") {
     info(await readTextFile(resolvedConfig.sourcePath));
-
-    if (options.useCache) {
-      await options.cacheStore.save();
-    }
-
+    await ctx.saveCacheIfNeeded();
     return;
   }
 
@@ -790,28 +819,15 @@ async function handleConfigCommand(options: {
     return;
   }
 
-  await openInEditor(resolvedConfig.sourcePath, options.globalConfig);
-
-  if (options.useCache) {
-    await options.cacheStore.save();
-  }
+  await openInEditor(resolvedConfig.sourcePath, globalConfig);
+  await ctx.saveCacheIfNeeded();
 }
 
-async function requireResolvedConfig(options: {
-  cwd: string;
-  explicitConfigPath?: string;
-  cacheStore: CacheStore;
-  useCache: boolean;
-}): Promise<ResolvedConfig> {
-  const resolvedConfig = await resolveProjectConfig({
-    cwd: options.cwd,
-    explicitConfigPath: options.explicitConfigPath,
-    useCache: options.useCache,
-    cacheStore: options.cacheStore,
-  });
+async function requireResolvedConfig(ctx: WorkspaceContext): Promise<ResolvedConfig> {
+  const resolvedConfig = await ctx.getProjectConfig();
 
   if (!resolvedConfig) {
-    throw new Error(`No ${CONFIG_FILE_NAME} found above ${options.cwd}.`);
+    throw new Error(`No ${CONFIG_FILE_NAME} found above ${ctx.cwd}.`);
   }
 
   return resolvedConfig;
@@ -880,7 +896,8 @@ function printHelp(): void {
 Usage:
   run [args...] [-p <profile>] [-v] [--dry-run] [--no-cache] [--config <path>] [--cwd <path>]
   run init [--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]
-  run completion <zsh|bash>
+  run completion <zsh|bash> [--shell-hook]
+  run trust [--check | --revoke | --list]
   run doctor [--json]
   run profiles [--json]
   run up [args...] [-p <profile>] [--name <name>]
@@ -907,9 +924,12 @@ Examples:
   run -- --watch
   run -- doctor
   run -p dev -- --port 3000
+  rund -- --port 3000                 # (if alias="d" and shell hook is installed)
+  run-worker                          # (if profile="worker" and shell hook is installed)
   run up -p worker
   run ps --watch
   run init --yes --add-profile dev="bun --hot index.ts"
+  eval "$(run completion --shell-hook zsh)"  # Install shell hook
 
 Notes:
   - The nearest ${CONFIG_FILE_NAME} wins.
