@@ -1,9 +1,32 @@
-import { describe, expect, test } from "bun:test";
-import { spawn } from "node:child_process";
+import { describe, expect, mock, test } from "bun:test";
+import { spawn, spawnSync } from "node:child_process";
+
+const originalSpawn = spawn;
+const originalSpawnSync = spawnSync;
+
+let mockPsToThrow = false;
+let mockLsofToThrow = false;
+
+mock.module("node:child_process", () => {
+  return {
+    spawn: originalSpawn,
+    // biome-ignore lint/suspicious/noExplicitAny: mock interface compatibility
+    spawnSync: (command: string, args: string[], options: any) => {
+      if (command === "ps" && mockPsToThrow) {
+        throw new Error("ENOENT");
+      }
+      if (command === "lsof" && mockLsofToThrow) {
+        throw new Error("ENOENT");
+      }
+      return originalSpawnSync(command, args, options);
+    },
+  };
+});
 
 import {
   getBatchMetrics,
   getBatchPorts,
+  getProcessPorts,
   getProcessStartTime,
   isProcessRunning,
 } from "../src/process-metrics.ts";
@@ -138,6 +161,26 @@ describe("getBatchPorts", () => {
       expect(pidPorts.length).toBe(0);
     } finally {
       process.kill(pid, "SIGKILL");
+    }
+  });
+});
+
+describe("spawnSync ENOENT crash hazards", () => {
+  test("getProcessStartTime returns null instead of throwing when ps fails/is missing", () => {
+    mockPsToThrow = true;
+    try {
+      expect(getProcessStartTime(12345)).toBeNull();
+    } finally {
+      mockPsToThrow = false;
+    }
+  });
+
+  test("getProcessPorts returns [] instead of throwing when lsof fails/is missing", () => {
+    mockLsofToThrow = true;
+    try {
+      expect(getProcessPorts(12345)).toEqual([]);
+    } finally {
+      mockLsofToThrow = false;
     }
   });
 });
