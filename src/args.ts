@@ -30,6 +30,9 @@ export interface ParsedArgs {
   shellHook: boolean;
   shortcuts: boolean;
   install: boolean;
+  check: boolean;
+  revoke: boolean;
+  list: boolean;
 }
 
 export const COMMAND_SCHEMAS: Record<
@@ -88,6 +91,9 @@ export const COMMAND_SCHEMAS: Record<
     name: "trust",
     flags: {
       json: { type: "boolean", description: "Format output as JSON" },
+      check: { type: "boolean", description: "Check if the current config is trusted" },
+      revoke: { type: "boolean", description: "Revoke trust for the current config" },
+      list: { type: "boolean", description: "List all trusted configs" },
     },
   },
   up: {
@@ -182,6 +188,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
     shellHook: false,
     shortcuts: false,
     install: false,
+    check: false,
+    revoke: false,
+    list: false,
   };
 
   // 1. Separate global/top-level flags
@@ -365,6 +374,9 @@ function mapFlagValue(
     else if (flagName === "json") parsed.json = value as boolean;
   } else if (cmdName === "trust") {
     if (flagName === "json") parsed.json = value as boolean;
+    else if (flagName === "check") parsed.check = value as boolean;
+    else if (flagName === "revoke") parsed.revoke = value as boolean;
+    else if (flagName === "list") parsed.list = value as boolean;
   } else if (cmdName === "up") {
     if (flagName === "profile") parsed.profileName = value as string;
     else if (flagName === "name") parsed.name = value as string;
