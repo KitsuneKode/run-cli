@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { FlagDefinition } from "./command.ts";
+export type { FlagDefinition };
 import { RESERVED_COMMANDS } from "./constants.ts";
 
 export interface ParsedArgs {
