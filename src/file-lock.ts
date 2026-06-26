@@ -1,4 +1,13 @@
-import { constants, closeSync, mkdirSync, openSync, statSync, unlinkSync } from "node:fs";
+import {
+  constants,
+  closeSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeSync,
+} from "node:fs";
 import path from "node:path";
 import { sleep } from "./fs.ts";
 
@@ -42,6 +51,7 @@ export async function acquireFileLock(filePath: string, options?: LockOptions): 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const fd = openSync(lockPath, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY);
+      writeSync(fd, String(process.pid));
       return fd;
     } catch (error: unknown) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
@@ -71,8 +81,11 @@ export function releaseFileLock(fd: number, filePath: string): void {
   }
 
   try {
-    unlinkSync(lockPath);
+    const owner = readFileSync(lockPath, "utf8").trim();
+    if (owner === String(process.pid)) {
+      unlinkSync(lockPath);
+    }
   } catch {
-    // Already removed
+    // File already removed or unreadable
   }
 }
