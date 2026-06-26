@@ -1,7 +1,19 @@
 import { spawnSync } from "node:child_process";
 
+function safeSpawnSync(command: string, args: string[], options: { encoding: "utf8" }) {
+  try {
+    const result = spawnSync(command, args, options);
+    if (result.error) {
+      return { status: 1, stdout: "", stderr: "" };
+    }
+    return result;
+  } catch {
+    return { status: 1, stdout: "", stderr: "" };
+  }
+}
+
 export function getProcessStartTime(pid: number): string | null {
-  const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
+  const result = safeSpawnSync("ps", ["-o", "lstart=", "-p", String(pid)], {
     encoding: "utf8",
   });
 
@@ -32,7 +44,7 @@ export function isProcessRunning(pid: number, expectedStartTime?: string): boole
 }
 
 export function getProcessMemoryRssKb(pid: number): number | null {
-  const result = spawnSync("ps", ["-o", "rss=", "-p", String(pid)], {
+  const result = safeSpawnSync("ps", ["-o", "rss=", "-p", String(pid)], {
     encoding: "utf8",
   });
 
@@ -45,7 +57,7 @@ export function getProcessMemoryRssKb(pid: number): number | null {
 }
 
 export function getProcessPorts(pid: number): number[] {
-  const result = spawnSync("lsof", ["-Pan", "-p", String(pid), "-iTCP", "-sTCP:LISTEN"], {
+  const result = safeSpawnSync("lsof", ["-Pan", "-p", String(pid), "-iTCP", "-sTCP:LISTEN"], {
     encoding: "utf8",
   });
 
@@ -78,7 +90,7 @@ export function getBatchMetrics(pids: number[]): Map<number, BatchMetrics> {
     return results;
   }
 
-  const result = spawnSync("ps", ["-o", "pid=,rss=,lstart=", "-p", pids.join(",")], {
+  const result = safeSpawnSync("ps", ["-o", "pid=,rss=,lstart=", "-p", pids.join(",")], {
     encoding: "utf8",
   });
 
@@ -121,7 +133,7 @@ export function getBatchPorts(pids: number[]): Map<number, number[]> {
     return results;
   }
 
-  const result = spawnSync("lsof", ["-Pan", "-p", pids.join(","), "-iTCP", "-sTCP:LISTEN"], {
+  const result = safeSpawnSync("lsof", ["-Pan", "-p", pids.join(","), "-iTCP", "-sTCP:LISTEN"], {
     encoding: "utf8",
   });
 
