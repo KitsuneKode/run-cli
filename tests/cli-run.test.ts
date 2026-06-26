@@ -180,4 +180,70 @@ describe("direct cli run()", () => {
       os.homedir = originalHomedir;
     }
   });
+
+  test("trust lifecycle and flag routing", async () => {
+    const projectRoot = await createTempDir("run-cli-trust-");
+    const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
+
+    await writeTextFile(configPath, ["version = 1", 'command = "echo ok"'].join("\n"));
+
+    await withEnv(
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+      },
+      async () => {
+        // 1. run trust --check exit code is 1 when the config is untrusted.
+        const checkResult1 = await captureConsole(async () => {
+          await run(["trust", "--check", "--cwd", projectRoot]);
+        });
+        expect(checkResult1.exitCode).toBe(1);
+
+        // Also test check as a positional for backward compatibility
+        const checkPosResult1 = await captureConsole(async () => {
+          await run(["trust", "check", "--cwd", projectRoot]);
+        });
+        expect(checkPosResult1.exitCode).toBe(1);
+
+        // 2. run trust works, and then run trust --check exits with 0.
+        const trustResult = await captureConsole(async () => {
+          await run(["trust", "--cwd", projectRoot]);
+        });
+        expect(trustResult.stdout).toContain("Trusted");
+        expect(trustResult.exitCode).toBe(0);
+
+        const checkResult2 = await captureConsole(async () => {
+          await run(["trust", "--check", "--cwd", projectRoot]);
+        });
+        expect(checkResult2.exitCode).toBe(0);
+
+        // 4. run trust --list lists the trusted configuration paths.
+        const listResult = await captureConsole(async () => {
+          await run(["trust", "--list", "--cwd", projectRoot]);
+        });
+        expect(listResult.stdout).toContain(configPath);
+        expect(listResult.exitCode).toBe(0);
+
+        // Also check JSON option
+        const listJsonResult = await captureConsole(async () => {
+          await run(["trust", "--list", "--json", "--cwd", projectRoot]);
+        });
+        const listData = JSON.parse(listJsonResult.stdout.trim());
+        expect(listData.length).toBeGreaterThan(0);
+        expect(listData[0].configPath).toBe(configPath);
+
+        // 3. run trust --revoke makes the config untrusted again.
+        const revokeResult = await captureConsole(async () => {
+          await run(["trust", "--revoke", "--cwd", projectRoot]);
+        });
+        expect(revokeResult.stdout).toContain("Revoked trust");
+        expect(revokeResult.exitCode).toBe(0);
+
+        const checkResult3 = await captureConsole(async () => {
+          await run(["trust", "--check", "--cwd", projectRoot]);
+        });
+        expect(checkResult3.exitCode).toBe(1);
+      },
+    );
+  });
 });
