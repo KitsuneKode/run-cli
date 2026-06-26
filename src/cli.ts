@@ -117,6 +117,9 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "trust": {
         await handleTrustCommand(ctx, {
           action: secondPositional,
+          check: parsed.check,
+          revoke: parsed.revoke,
+          list: parsed.list,
           json: parsed.json,
         });
         return;
@@ -683,13 +686,18 @@ async function handleTrustCommand(
   ctx: WorkspaceContext,
   options: {
     action: string | undefined;
+    check: boolean;
+    revoke: boolean;
+    list: boolean;
     json: boolean;
   },
 ): Promise<void> {
-  const action = options.action ?? "trust";
+  const isCheck = options.check || options.action === "check" || options.action === "--check";
+  const isRevoke = options.revoke || options.action === "revoke" || options.action === "--revoke";
+  const isList = options.list || options.action === "list" || options.action === "--list";
+  const isDefault = options.action === "trust" || options.action === undefined;
 
-  // --check: silent exit-code check used by the shell hook
-  if (action === "--check") {
+  if (isCheck) {
     const configPath = await findNearestExistingConfig(ctx.cwd);
     if (!configPath) {
       process.exitCode = 1;
@@ -702,20 +710,7 @@ async function handleTrustCommand(
     return;
   }
 
-  // trust (default positional or no positional)
-  if (action === "trust" || action === undefined) {
-    const configPath = await findNearestExistingConfig(ctx.cwd);
-    if (!configPath) {
-      throw new Error(`No .run.toml found above ${ctx.cwd}. Nothing to trust.`);
-    }
-    const entry = await trustConfig(configPath);
-    info(`Trusted ${configPath}`);
-    info(`  sha256: ${entry.sha256}`);
-    info(`  trusted at: ${entry.trustedAt}`);
-    return;
-  }
-
-  if (action === "--revoke" || action === "revoke") {
+  if (isRevoke) {
     const configPath = await findNearestExistingConfig(ctx.cwd);
     if (!configPath) {
       throw new Error(`No .run.toml found above ${ctx.cwd}.`);
@@ -729,7 +724,7 @@ async function handleTrustCommand(
     return;
   }
 
-  if (action === "--list" || action === "list") {
+  if (isList) {
     const entries = await listTrustedConfigs();
     if (options.json) {
       info(`${JSON.stringify(entries, null, 2)}\n`);
@@ -747,8 +742,20 @@ async function handleTrustCommand(
     return;
   }
 
+  if (isDefault) {
+    const configPath = await findNearestExistingConfig(ctx.cwd);
+    if (!configPath) {
+      throw new Error(`No .run.toml found above ${ctx.cwd}. Nothing to trust.`);
+    }
+    const entry = await trustConfig(configPath);
+    info(`Trusted ${configPath}`);
+    info(`  sha256: ${entry.sha256}`);
+    info(`  trusted at: ${entry.trustedAt}`);
+    return;
+  }
+
   throw new Error(
-    `Unknown trust action: "${action}". Use: run trust | run trust --check | run trust --revoke | run trust --list`,
+    `Unknown trust action: "${options.action}". Use: run trust | run trust --check | run trust --revoke | run trust --list`,
   );
 }
 
