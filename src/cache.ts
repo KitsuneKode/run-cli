@@ -48,12 +48,34 @@ export class CacheStore {
 
   async save(): Promise<void> {
     const cacheData = await this.load();
+
+    const lookupKeys = Object.keys(cacheData.configLookups);
+    if (lookupKeys.length > 500) {
+      const keysToDelete = lookupKeys.slice(0, lookupKeys.length - 500);
+      for (const key of keysToDelete) {
+        if (key !== undefined) {
+          delete cacheData.configLookups[key];
+        }
+      }
+    }
+
+    const detectionKeys = Object.keys(cacheData.detections);
+    if (detectionKeys.length > 500) {
+      const keysToDelete = detectionKeys.slice(0, detectionKeys.length - 500);
+      for (const key of keysToDelete) {
+        if (key !== undefined) {
+          delete cacheData.detections[key];
+        }
+      }
+    }
+
     await writeTextFile(this.filePath, `${JSON.stringify(cacheData, null, 2)}\n`);
   }
 
   async getConfigLookup(cwd: string): Promise<{ configPath: string; cacheHit: boolean } | null> {
     const cacheData = await this.load();
-    const entry = cacheData.configLookups[path.resolve(cwd)];
+    const resolvedCwd = path.resolve(cwd);
+    const entry = cacheData.configLookups[resolvedCwd];
 
     if (!entry) {
       return null;
@@ -62,9 +84,12 @@ export class CacheStore {
     const fingerprint = await statFingerprint(entry.configPath);
 
     if (fingerprint === null || fingerprint !== entry.configFingerprint) {
-      delete cacheData.configLookups[path.resolve(cwd)];
+      delete cacheData.configLookups[resolvedCwd];
       return null;
     }
+
+    delete cacheData.configLookups[resolvedCwd];
+    cacheData.configLookups[resolvedCwd] = entry;
 
     return {
       configPath: entry.configPath,
@@ -74,13 +99,15 @@ export class CacheStore {
 
   async setConfigLookup(cwd: string, configPath: string): Promise<void> {
     const cacheData = await this.load();
+    const resolvedCwd = path.resolve(cwd);
     const fingerprint = await statFingerprint(configPath);
 
     if (fingerprint === null) {
       return;
     }
 
-    cacheData.configLookups[path.resolve(cwd)] = {
+    delete cacheData.configLookups[resolvedCwd];
+    cacheData.configLookups[resolvedCwd] = {
       configPath,
       configFingerprint: fingerprint,
     };
@@ -91,7 +118,8 @@ export class CacheStore {
     fingerprints: Record<string, string>,
   ): Promise<{ markers: string[]; suggestions: DetectionSuggestion[]; cacheHit: boolean } | null> {
     const cacheData = await this.load();
-    const entry = cacheData.detections[path.resolve(projectRoot)];
+    const resolvedRoot = path.resolve(projectRoot);
+    const entry = cacheData.detections[resolvedRoot];
 
     if (!entry) {
       return null;
@@ -101,10 +129,13 @@ export class CacheStore {
 
     for (const key of keys) {
       if (entry.fingerprints[key] !== fingerprints[key]) {
-        delete cacheData.detections[path.resolve(projectRoot)];
+        delete cacheData.detections[resolvedRoot];
         return null;
       }
     }
+
+    delete cacheData.detections[resolvedRoot];
+    cacheData.detections[resolvedRoot] = entry;
 
     return {
       markers: entry.markers,
@@ -120,7 +151,10 @@ export class CacheStore {
     suggestions: DetectionSuggestion[],
   ): Promise<void> {
     const cacheData = await this.load();
-    cacheData.detections[path.resolve(projectRoot)] = {
+    const resolvedRoot = path.resolve(projectRoot);
+
+    delete cacheData.detections[resolvedRoot];
+    cacheData.detections[resolvedRoot] = {
       fingerprints,
       markers,
       suggestions,

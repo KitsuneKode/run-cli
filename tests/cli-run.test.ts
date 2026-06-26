@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import os from "node:os";
 import path from "node:path";
 
 import { run } from "../src/cli.ts";
@@ -149,5 +150,34 @@ describe("direct cli run()", () => {
     expect(bashResult.stdout).toContain("complete -F _run_complete run");
     expect(bashResult.stdout).toContain("--watch -w");
     expect(bashResult.stdout).toContain("x1b");
+  });
+
+  test("installs completion hooks to zsh rc file", async () => {
+    const projectRoot = await createTempDir("run-cli-install-");
+    const originalHomedir = os.homedir;
+
+    os.homedir = () => projectRoot;
+
+    try {
+      const zshrcPath = path.join(projectRoot, ".zshrc");
+
+      const installResult = await captureConsole(async () => {
+        await run(["completion", "zsh", "--install"]);
+      });
+
+      expect(installResult.stdout).toContain("Successfully installed shell hook to ~/.zshrc");
+
+      const content = await Bun.file(zshrcPath).text();
+      expect(content).toContain("# run-cli completion hook");
+      expect(content).toContain('eval "$(run completion zsh --shell-hook)"');
+
+      const reinstallResult = await captureConsole(async () => {
+        await run(["completion", "zsh", "--install"]);
+      });
+
+      expect(reinstallResult.stdout).toContain("Shell hook is already present in ~/.zshrc");
+    } finally {
+      os.homedir = originalHomedir;
+    }
   });
 });

@@ -29,6 +29,7 @@ export interface ParsedArgs {
   invokedAs?: string;
   shellHook: boolean;
   shortcuts: boolean;
+  install: boolean;
 }
 
 export const COMMAND_SCHEMAS: Record<
@@ -64,6 +65,10 @@ export const COMMAND_SCHEMAS: Record<
     name: "completion",
     flags: {
       "shell-hook": { type: "boolean", description: "Output shell hook script" },
+      install: {
+        type: "boolean",
+        description: "Automatically install the shell hook script to shell rc",
+      },
     },
   },
   doctor: {
@@ -176,6 +181,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     deprecatedInitProfileFlagUsed: false,
     shellHook: false,
     shortcuts: false,
+    install: false,
   };
 
   // 1. Separate global/top-level flags
@@ -351,6 +357,7 @@ function mapFlagValue(
     if (flagName === "global") parsed.global = value as boolean;
   } else if (cmdName === "completion") {
     if (flagName === "shell-hook") parsed.shellHook = value as boolean;
+    else if (flagName === "install") parsed.install = value as boolean;
   } else if (cmdName === "doctor") {
     if (flagName === "json") parsed.json = value as boolean;
   } else if (cmdName === "profiles") {

@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 
 import { parseArgs } from "./args.ts";
@@ -94,7 +95,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
         return;
       }
       case "completion":
-        handleCompletionCommand(secondPositional, parsed.shellHook);
+        await handleCompletionCommand(secondPositional, parsed.shellHook, parsed.install);
         return;
       case "doctor": {
         await handleDoctorCommand(ctx, {
@@ -321,7 +322,18 @@ async function handleDoctorCommand(
   await ctx.saveCacheIfNeeded();
 }
 
-function handleCompletionCommand(shell: string | undefined, shellHook = false): void {
+async function handleCompletionCommand(
+  shell: string | undefined,
+  shellHook = false,
+  install = false,
+): Promise<void> {
+  if (install) {
+    if (shell !== "zsh" && shell !== "bash") {
+      throw new Error("Usage: run completion <zsh|bash> --install");
+    }
+    await installShellHook(shell);
+    return;
+  }
   switch (shell) {
     case "zsh":
       info(shellHook ? renderZshShellHook() : renderZshCompletion());
@@ -330,8 +342,35 @@ function handleCompletionCommand(shell: string | undefined, shellHook = false): 
       info(shellHook ? renderBashShellHook() : renderBashCompletion());
       return;
     default:
-      throw new Error("Usage: run completion <zsh|bash> [--shell-hook]");
+      throw new Error("Usage: run completion <zsh|bash> [--shell-hook] [--install]");
   }
+}
+
+async function installShellHook(shell: "zsh" | "bash"): Promise<void> {
+  const homeDir = os.homedir();
+  const rcFileName = shell === "zsh" ? ".zshrc" : ".bashrc";
+  const rcFilePath = path.join(homeDir, rcFileName);
+
+  const hookComment = "# run-cli completion hook";
+  const hookSnippet = `eval "$(run completion ${shell} --shell-hook)"`;
+  const appendSnippet = `\n${hookComment}\n${hookSnippet}\n`;
+
+  let content = "";
+  if (await pathExists(rcFilePath)) {
+    content = await readTextFile(rcFilePath);
+  }
+
+  if (
+    content.includes("run completion") &&
+    (content.includes("shell-hook") || content.includes("completion"))
+  ) {
+    info(`Shell hook is already present in ~/${rcFileName}.`);
+    return;
+  }
+
+  await writeTextFile(rcFilePath, content + appendSnippet);
+  info(`Successfully installed shell hook to ~/${rcFileName}.`);
+  warn(`Please run: source ~/${rcFileName} (or restart your terminal) to enable completions.`);
 }
 
 async function handleRunCommand(
@@ -884,7 +923,7 @@ async function requireIdentifier(
 }
 
 async function openInEditor(targetPath: string, globalConfig: GlobalConfig): Promise<void> {
-  const editor = globalConfig.editor ?? process.env.EDITOR ?? "vi";
+  const editor = globalConfig.editor ?? process.env.VISUAL ?? process.env.EDITOR ?? "vi";
   const shell = globalConfig.shell ?? process.env.SHELL ?? FALLBACK_SHELL;
   const command = `${editor} ${shellQuote(targetPath)}`;
 
