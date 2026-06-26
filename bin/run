@@ -20,4 +20,9 @@ resolve_script_dir() {
 
 script_dir=$(resolve_script_dir "$0")
 dist_dir=$(CDPATH= cd -- "$script_dir/../dist" && pwd)
-exec bun "$dist_dir/run.js" "$@"
+
+if command -v bun >/dev/null 2>&1; then
+  exec bun "$dist_dir/run.js" "$@"
+else
+  exec node "$dist_dir/run.js" "$@"
+fi

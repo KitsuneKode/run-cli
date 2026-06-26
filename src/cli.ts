@@ -139,6 +139,7 @@ export async function run(argv = process.argv.slice(2)): Promise<void> {
       case "dashboard":
         await handleDashboardCommand({
           registry: new ProcessRegistry(),
+          watch: parsed.watch,
         });
         return;
       case "inspect":
@@ -528,14 +529,33 @@ async function handlePsCommand(options: {
 
 async function handleDashboardCommand(options: {
   registry: ProcessRegistry;
+  watch: boolean;
 }): Promise<void> {
-  const snapshots = await options.registry.withLock(() =>
-    options.registry.listSnapshots({
-      includePorts: false,
-      includeMemory: true,
-    }),
-  );
-  info(renderManagedDashboard(snapshots));
+  const renderAndPrint = async () => {
+    const snapshots = await options.registry.withLock(() =>
+      options.registry.listSnapshots({
+        includePorts: false,
+        includeMemory: true,
+      }),
+    );
+    info(renderManagedDashboard(snapshots));
+  };
+
+  if (options.watch) {
+    process.stdout.write("\x1B[?25l"); // hide cursor
+    process.on("SIGINT", () => {
+      process.stdout.write("\x1B[?25h"); // show cursor
+      process.exit(0);
+    });
+
+    while (true) {
+      process.stdout.write("\x1B[H\x1B[2J"); // clear screen
+      await renderAndPrint();
+      await sleep(2000);
+    }
+  }
+
+  await renderAndPrint();
 }
 
 async function handleInspectCommand(options: {
@@ -902,7 +922,7 @@ Usage:
   run profiles [--json]
   run up [args...] [-p <profile>] [--name <name>]
   run ps [--json] [--details] [--watch]
-  run dashboard
+  run dashboard [--watch]
   run inspect <name|id> [--json]
   run logs <name|id> [--lines <n>] [--follow]
   run stop <name|id>
@@ -932,7 +952,7 @@ Examples:
   eval "$(run completion --shell-hook zsh)"  # Install shell hook
 
 Notes:
-  - The nearest ${CONFIG_FILE_NAME} wins.
+  - The nearest \${CONFIG_FILE_NAME} wins.
   - Plain "run" executes the effective default profile for the project.
   - Profiles are explicit: use "run -p <profile>".
   - Use "--" to pass flags through to the underlying command.
@@ -940,5 +960,5 @@ Notes:
   - "run ps --details" adds port information.
   - "run completion" prints shell completion scripts for Bash or Zsh.
   - "run up" starts a managed background process with logs, pid, uptime, memory, and ports.
-  - "run dashboard" shows the current managed process cluster in one place.`);
+  - "run dashboard" shows the current managed process cluster in one place. Use "--watch" to refresh live.`);
 }

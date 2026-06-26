@@ -103,6 +103,13 @@ export const COMMAND_SCHEMAS: Record<
   },
   dashboard: {
     name: "dashboard",
+    flags: {
+      watch: {
+        type: "boolean",
+        short: "w",
+        description: "Keep running and refreshing dashboard",
+      },
+    },
   },
   inspect: {
     name: "inspect",
@@ -358,6 +365,8 @@ function mapFlagValue(
     if (flagName === "json") parsed.json = value as boolean;
     else if (flagName === "details") parsed.details = value as boolean;
     else if (flagName === "watch") parsed.watch = value as boolean;
+  } else if (cmdName === "dashboard") {
+    if (flagName === "watch") parsed.watch = value as boolean;
   } else if (cmdName === "inspect") {
     if (flagName === "json") parsed.json = value as boolean;
   } else if (cmdName === "logs") {
