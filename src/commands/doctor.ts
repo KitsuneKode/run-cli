@@ -1,13 +1,14 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { detectProject } from "../detect.ts";
 import { doctorReportData, renderDoctorReport } from "../doctor.ts";
 import { info } from "../output.ts";
+import type { Command } from "./types.ts";
 
 export const doctorCommand: Command = {
   name: "doctor",
   description: "Diagnose configuration and project status",
+  usage: "[--json]",
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },

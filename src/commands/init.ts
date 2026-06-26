@@ -1,12 +1,14 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { runInit } from "../init.ts";
-import { info, dim } from "../output.ts";
+import { dim, info } from "../output.ts";
+import type { Command } from "./types.ts";
 
 export const initCommand: Command = {
   name: "init",
   description: "Initialize or add to local configurations",
+  usage:
+    "[--force] [--yes] [--command <cmd>] [--default-profile <name>] [--add-profile <name=command>]",
   flags: {
     command: { type: "string", description: "Default command to write to config" },
     "default-profile": { type: "string", description: "Name of the default profile" },

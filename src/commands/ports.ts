@@ -1,12 +1,13 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
-import { ProcessRegistry } from "../process-registry.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
+import { ProcessRegistry } from "../process-registry.ts";
+import type { Command } from "./types.ts";
 
 export const portsCommand: Command = {
   name: "ports",
   description: "List listening ports of managed background processes",
+  usage: "[--json]",
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },

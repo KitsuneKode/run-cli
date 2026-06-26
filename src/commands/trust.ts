@@ -1,6 +1,6 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
+import type { WorkspaceContext } from "../context.ts";
+import { info } from "../output.ts";
 import {
   findNearestExistingConfig,
   isConfigTrusted,
@@ -8,11 +8,12 @@ import {
   revokeConfigTrust,
   trustConfig,
 } from "../trust.ts";
-import { info } from "../output.ts";
+import type { Command } from "./types.ts";
 
 export const trustCommand: Command = {
   name: "trust",
   description: "Manage config file trust registration",
+  usage: "[--check | --revoke | --list] [--json]",
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
     check: { type: "boolean", description: "Check if the current config is trusted" },

@@ -1,14 +1,15 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
-import { ProcessRegistry } from "../process-registry.ts";
+import type { WorkspaceContext } from "../context.ts";
+import { sleep } from "../fs.ts";
 import { renderManagedDashboard } from "../managed-process-view.ts";
 import { info } from "../output.ts";
-import { sleep } from "../fs.ts";
+import { ProcessRegistry } from "../process-registry.ts";
+import type { Command } from "./types.ts";
 
 export const dashboardCommand: Command = {
   name: "dashboard",
   description: "Show a real-time monitoring dashboard for processes",
+  usage: "[--watch]",
   flags: {
     watch: {
       type: "boolean",

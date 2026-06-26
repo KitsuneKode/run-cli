@@ -1,13 +1,14 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
 import { listProfiles, listShortcutNames } from "../config.ts";
-import { info } from "../output.ts";
 import { CONFIG_FILE_NAME } from "../constants.ts";
+import type { WorkspaceContext } from "../context.ts";
+import { info } from "../output.ts";
+import type { Command } from "./types.ts";
 
 export const profilesCommand: Command = {
   name: "profiles",
   description: "List available execution profiles",
+  usage: "[--json] [--shortcuts]",
   flags: {
     shortcuts: { type: "boolean", description: "Emit shortcut names for shell hook" },
     json: { type: "boolean", description: "Format output as JSON" },

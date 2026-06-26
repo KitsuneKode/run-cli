@@ -1,17 +1,18 @@
 import { spawn } from "node:child_process";
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
+import { renderGlobalConfig } from "../config.ts";
+import { CONFIG_FILE_NAME, FALLBACK_SHELL } from "../constants.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { getGlobalConfigPath } from "../env-paths.ts";
 import { pathExists, readTextFile, writeTextFile } from "../fs.ts";
-import { renderGlobalConfig } from "../config.ts";
 import { info, warn } from "../output.ts";
-import { CONFIG_FILE_NAME, FALLBACK_SHELL } from "../constants.ts";
 import type { GlobalConfig } from "../types.ts";
+import type { Command } from "./types.ts";
 
 export const configCommand: Command = {
   name: "config",
   description: "View, edit, or validate local/global configurations",
+  usage: "<view|path|edit|validate> [--global]",
   flags: {
     global: { type: "boolean", description: "Operations apply to global configuration" },
   },

@@ -1,14 +1,15 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
-import { ProcessRegistry } from "../process-registry.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { renderManagedProcessDetails } from "../managed-process-view.ts";
 import { info } from "../output.ts";
+import { ProcessRegistry } from "../process-registry.ts";
 import type { ManagedProcessSnapshot } from "../types.ts";
+import type { Command } from "./types.ts";
 
 export const inspectCommand: Command = {
   name: "inspect",
   description: "Show detailed status of a managed process",
+  usage: "<name|id> [--json]",
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },

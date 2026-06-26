@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { FlagDefinition } from "./command.ts";
 export type { FlagDefinition };
+import { commands } from "./commands/index.ts";
 import { RESERVED_COMMANDS } from "./constants.ts";
 
 export interface ParsedArgs {
@@ -43,129 +44,23 @@ export const COMMAND_SCHEMAS: Record<
     flags?: Record<string, FlagDefinition>;
     allowForwardedArgs?: boolean;
   }
-> = {
-  init: {
-    name: "init",
-    flags: {
-      command: { type: "string", description: "Default command to write to config" },
-      "default-profile": { type: "string", description: "Name of the default profile" },
-      "add-profile": {
-        type: "string",
-        multiple: true,
-        description: "Add a profile in name=command format",
-      },
-      profile: { type: "string", multiple: true, description: "Deprecated profile specifier" },
-      force: { type: "boolean", description: "Overwrite existing config" },
-      yes: { type: "boolean", description: "Answer yes to prompts" },
-    },
+> = {};
+
+for (const cmd of commands) {
+  COMMAND_SCHEMAS[cmd.name] = {
+    name: cmd.name,
+    flags: cmd.flags,
+    allowForwardedArgs: cmd.allowForwardedArgs,
+  };
+}
+
+COMMAND_SCHEMAS.run = {
+  name: "run",
+  flags: {
+    profile: { type: "string", short: "p", description: "Profile to run" },
+    "dry-run": { type: "boolean", description: "Print command instead of running" },
   },
-  config: {
-    name: "config",
-    flags: {
-      global: { type: "boolean", description: "Operations apply to global configuration" },
-    },
-  },
-  completion: {
-    name: "completion",
-    flags: {
-      "shell-hook": { type: "boolean", description: "Output shell hook script" },
-      install: {
-        type: "boolean",
-        description: "Automatically install the shell hook script to shell rc",
-      },
-    },
-  },
-  doctor: {
-    name: "doctor",
-    flags: {
-      json: { type: "boolean", description: "Format output as JSON" },
-    },
-  },
-  profiles: {
-    name: "profiles",
-    flags: {
-      shortcuts: { type: "boolean", description: "Emit shortcut names for shell hook" },
-      json: { type: "boolean", description: "Format output as JSON" },
-    },
-  },
-  trust: {
-    name: "trust",
-    flags: {
-      json: { type: "boolean", description: "Format output as JSON" },
-      check: { type: "boolean", description: "Check if the current config is trusted" },
-      revoke: { type: "boolean", description: "Revoke trust for the current config" },
-      list: { type: "boolean", description: "List all trusted configs" },
-    },
-  },
-  up: {
-    name: "up",
-    flags: {
-      profile: { type: "string", short: "p", description: "Profile to run in the background" },
-      name: { type: "string", description: "Override process display name" },
-    },
-    allowForwardedArgs: true,
-  },
-  ps: {
-    name: "ps",
-    flags: {
-      json: { type: "boolean", description: "Format output as JSON" },
-      details: { type: "boolean", description: "Include listening ports" },
-      watch: { type: "boolean", short: "w", description: "Keep running and refreshing output" },
-    },
-  },
-  dashboard: {
-    name: "dashboard",
-    flags: {
-      watch: {
-        type: "boolean",
-        short: "w",
-        description: "Keep running and refreshing dashboard",
-      },
-    },
-  },
-  inspect: {
-    name: "inspect",
-    flags: {
-      json: { type: "boolean", description: "Format output as JSON" },
-    },
-  },
-  logs: {
-    name: "logs",
-    flags: {
-      follow: { type: "boolean", short: "f", description: "Stream log changes" },
-      lines: { type: "number", description: "Number of trailing lines to show" },
-    },
-  },
-  stop: {
-    name: "stop",
-  },
-  kill: {
-    name: "kill",
-  },
-  restart: {
-    name: "restart",
-  },
-  prune: {
-    name: "prune",
-    flags: {
-      "dry-run": { type: "boolean", description: "Only print what would be pruned" },
-      json: { type: "boolean", description: "Format output as JSON" },
-    },
-  },
-  ports: {
-    name: "ports",
-    flags: {
-      json: { type: "boolean", description: "Format output as JSON" },
-    },
-  },
-  run: {
-    name: "run",
-    flags: {
-      profile: { type: "string", short: "p", description: "Profile to run" },
-      "dry-run": { type: "boolean", description: "Print command instead of running" },
-    },
-    allowForwardedArgs: true,
-  },
+  allowForwardedArgs: true,
 };
 
 export function parseArgs(argv: string[]): ParsedArgs {

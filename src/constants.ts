@@ -14,25 +14,26 @@ export const PROJECT_CONFIG_VERSION = 1;
 export const PROCESS_REGISTRY_VERSION = 1;
 export const FALLBACK_SHELL = "/bin/sh";
 
-export const RESERVED_COMMANDS = new Set([
-  "completion",
-  "config",
-  "dashboard",
-  "doctor",
-  "help",
-  "init",
-  "inspect",
-  "kill",
-  "logs",
-  "ports",
-  "profiles",
-  "prune",
-  "ps",
-  "restart",
-  "stop",
-  "trust",
-  "up",
-]);
+class LazyReservedCommandsSet extends Set<string> {
+  private _initialized = false;
+
+  private _init() {
+    if (this._initialized) return;
+    this._initialized = true;
+    const { commands } = require("./commands/index.ts");
+    for (const cmd of commands) {
+      this.add(cmd.name);
+    }
+    this.add("help");
+  }
+
+  override has(value: string): boolean {
+    this._init();
+    return super.has(value);
+  }
+}
+
+export const RESERVED_COMMANDS = new LazyReservedCommandsSet();
 
 export const ENTRYPOINT_CANDIDATES = [
   "index.ts",

@@ -1,20 +1,21 @@
-import type { WorkspaceContext } from "../context.ts";
-import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
 import os from "node:os";
 import path from "node:path";
-import { info, warn } from "../output.ts";
+import type { ParsedArgs } from "../args.ts";
 import {
   renderBashCompletion,
   renderBashShellHook,
   renderZshCompletion,
   renderZshShellHook,
 } from "../completion.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { pathExists, readTextFile, writeTextFile } from "../fs.ts";
+import { info, warn } from "../output.ts";
+import type { Command } from "./types.ts";
 
 export const completionCommand: Command = {
   name: "completion",
   description: "Generate or install shell completion scripts",
+  usage: "<zsh|bash> [--shell-hook] [--install]",
   flags: {
     "shell-hook": { type: "boolean", description: "Output shell hook script" },
     install: {

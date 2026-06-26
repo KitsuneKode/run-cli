@@ -1,15 +1,16 @@
 import { spawn } from "node:child_process";
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
-import { ProcessRegistry } from "../process-registry.ts";
+import type { WorkspaceContext } from "../context.ts";
 import { pathExists, readTextFile } from "../fs.ts";
 import { info } from "../output.ts";
+import { ProcessRegistry } from "../process-registry.ts";
 import type { ManagedProcessSnapshot } from "../types.ts";
+import type { Command } from "./types.ts";
 
 export const logsCommand: Command = {
   name: "logs",
   description: "View logs of a managed process",
+  usage: "<name|id> [--lines <n>] [--follow]",
   flags: {
     follow: { type: "boolean", short: "f", description: "Stream log changes" },
     lines: { type: "number", description: "Number of trailing lines to show" },

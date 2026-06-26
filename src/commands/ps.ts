@@ -1,14 +1,15 @@
-import type { WorkspaceContext } from "../context.ts";
 import type { ParsedArgs } from "../args.ts";
-import type { Command } from "./types.ts";
-import { ProcessRegistry } from "../process-registry.ts";
+import type { WorkspaceContext } from "../context.ts";
+import { sleep } from "../fs.ts";
 import { renderManagedProcessList } from "../managed-process-view.ts";
 import { info } from "../output.ts";
-import { sleep } from "../fs.ts";
+import { ProcessRegistry } from "../process-registry.ts";
+import type { Command } from "./types.ts";
 
 export const psCommand: Command = {
   name: "ps",
   description: "List running managed background processes",
+  usage: "[--json] [--details] [--watch]",
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
     details: { type: "boolean", description: "Include listening ports" },
