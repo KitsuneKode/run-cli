@@ -29,6 +29,7 @@ describe("direct cli run()", () => {
       {
         XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
         XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
       },
       async () => {
         const pathResult = await captureConsole(async () => {
@@ -57,6 +58,7 @@ describe("direct cli run()", () => {
       {
         XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
         XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
       },
       async () => {
         const result = await captureConsole(async () => {
@@ -82,6 +84,7 @@ describe("direct cli run()", () => {
       {
         XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
         XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
       },
       async () => {
         const result = await captureConsole(async () => {
@@ -104,6 +107,7 @@ describe("direct cli run()", () => {
       {
         XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
         XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
       },
       async () => {
         const result = await captureConsole(async () => {
@@ -191,6 +195,7 @@ describe("direct cli run()", () => {
       {
         XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
         XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
       },
       async () => {
         // 1. run trust --check exit code is 1 when the config is untrusted.
