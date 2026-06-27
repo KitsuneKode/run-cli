@@ -219,7 +219,7 @@ Examples:
   run up -p worker
   run ps --watch
   run init --yes --add-profile dev="bun --hot index.ts"
-  eval "$(run completion --shell-hook zsh)"  # Install shell hook
+  if command -v run >/dev/null 2>&1; then eval "$(run completion --shell-hook zsh)"; fi  # Install shell hook
 
 Notes:
   - The nearest \${CONFIG_FILE_NAME} wins.

@@ -59,10 +59,14 @@ You can also run profiles directly by typing the alias suffix (e.g. `rund` or `r
 
    ```bash
    # For Zsh
-   eval "$(run completion --shell-hook zsh)"
+   if command -v run >/dev/null 2>&1; then
+     eval "$(run completion --shell-hook zsh)"
+   fi
    
    # For Bash
-   eval "$(run completion --shell-hook bash)"
+   if command -v run >/dev/null 2>&1; then
+     eval "$(run completion --shell-hook bash)"
+   fi
    ```
 
    *Security Note:* Because shell hooks execute arbitrary `.run.toml` paths based on directory changes, `run` implements a trust gate. When entering a new project, you must explicitly approve the config by running `run trust` before shortcuts activate.
