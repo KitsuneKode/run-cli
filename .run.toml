@@ -1,22 +1,33 @@
 version = 1
 default_profile = "dev"
 
+# Global environment variables applied to all profiles
+[env]
+PAGER = "cat"
+NODE_ENV = "development"
+
 [profiles.default]
 command = "bun test"
-description = "Run the test suite once."
+description = "Run the unit and integration test suite once."
+alias = "t"
 
 [profiles.dev]
 command = "bun test --watch"
 description = "Watch tests while iterating on the CLI."
+alias = "d"
+env = { WATCH_MODE = "true" }
 
 [profiles.lint]
 command = "bun run lint"
-description = "Run lint and markdown checks."
+description = "Run Biome formatting and MarkdownLint checks."
+alias = "l"
 
 [profiles.build]
 command = "bun run build"
-description = "Build the distributable CLI entrypoint."
+description = "Compile and bundle the production CLI entrypoint."
+alias = "b"
 
 [profiles.check]
 command = "bun run check"
-description = "Run lint and tests together."
+description = "Run full quality gates (formatting + compile + tests)."
+alias = "ck"
