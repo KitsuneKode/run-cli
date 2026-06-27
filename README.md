@@ -1,5 +1,7 @@
 # run-cli
 
+![run-cli Social Preview](assets/og-preview.jpg)
+
 `run-cli` consolidates your project's command surface into a single, lightning-fast, zero-dependency launcher: `run`.
 
 Instead of remembering whether a repository uses `bun run`, `npm run`, `poetry run`, `go run`, `cargo run`, or local makefiles/scripts, you define the project's entrypoint contracts once in a `.run.toml` and use the exact same commands everywhere.
