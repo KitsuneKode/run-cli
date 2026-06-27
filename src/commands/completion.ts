@@ -53,22 +53,19 @@ async function installShellHook(shell: "zsh" | "bash"): Promise<void> {
 
   const hookComment = "# run-cli completion hook";
   const hookSnippet = `eval "$(run completion ${shell} --shell-hook)"`;
-  const appendSnippet = `\\n${hookComment}\\n${hookSnippet}\\n`;
+  const appendSnippet = `\n${hookComment}\n${hookSnippet}\n`;
 
   let content = "";
   if (await pathExists(rcFilePath)) {
     content = await readTextFile(rcFilePath);
   }
 
-  if (
-    content.includes("run completion") &&
-    (content.includes("shell-hook") || content.includes("completion"))
-  ) {
+  if (content.includes(hookComment)) {
     info(`Shell hook is already present in ~/${rcFileName}.`);
     return;
   }
 
   await writeTextFile(rcFilePath, content + appendSnippet);
   info(`Successfully installed shell hook to ~/${rcFileName}.`);
-  warn(`Please run: source ~/${rcFileName} (or restart your terminal) to enable completions.`);
+  warn(`Reload your shell to activate: source ~/${rcFileName}`);
 }
