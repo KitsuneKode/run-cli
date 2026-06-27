@@ -490,6 +490,7 @@ export function listProfiles(config: RunConfigFile): Array<{
   name: string;
   command: string;
   description?: string;
+  alias?: string | string[];
   isDefault: boolean;
 }> {
   const profiles = new Map<
@@ -498,6 +499,7 @@ export function listProfiles(config: RunConfigFile): Array<{
       name: string;
       command: string;
       description?: string;
+      alias?: string | string[];
       isDefault: boolean;
     }
   >();
@@ -508,6 +510,7 @@ export function listProfiles(config: RunConfigFile): Array<{
       name: "default",
       command: config.command,
       description: undefined,
+      alias: undefined,
       isDefault: !config.defaultProfile || config.defaultProfile === "default",
     });
   }
@@ -523,6 +526,7 @@ export function listProfiles(config: RunConfigFile): Array<{
       name,
       command: profile.command,
       description: profile.description,
+      alias: profile.alias,
       isDefault: config.defaultProfile ? config.defaultProfile === name : name === "default",
     });
 
