@@ -1,4 +1,5 @@
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
+import { unlink } from "node:fs/promises";
 import path from "node:path";
 
 import { PROCESS_REGISTRY_VERSION } from "./constants.ts";
@@ -215,16 +216,18 @@ export class ProcessRegistry {
 
   async prune(options?: {
     dryRun?: boolean;
-  }): Promise<{ removed: number; kept: number; cleaned: string[] }> {
+  }): Promise<{ removed: number; kept: number; cleaned: string[]; logsRemoved: number }> {
     const registry = await this.read();
     const keptRecords: ManagedProcessRecord[] = [];
     const cleaned: string[] = [];
+    const logPaths: string[] = [];
 
     for (const record of registry.processes) {
       if (isProcessRunning(record.pid, record.processStartTime)) {
         keptRecords.push(record);
       } else {
         cleaned.push(record.name);
+        logPaths.push(record.logPath);
       }
     }
 
@@ -233,9 +236,19 @@ export class ProcessRegistry {
     if (!options?.dryRun) {
       registry.processes = keptRecords;
       await this.write(registry);
+      for (const logPath of logPaths) {
+        if (logPath) {
+          await unlink(logPath).catch(() => {}); // ignore ENOENT
+        }
+      }
     }
 
-    return { removed, kept: keptRecords.length, cleaned };
+    return {
+      removed,
+      kept: keptRecords.length,
+      cleaned,
+      logsRemoved: logPaths.filter(Boolean).length,
+    };
   }
 
   createLogPath(processName: string): string {
