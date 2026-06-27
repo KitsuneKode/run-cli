@@ -61,7 +61,7 @@ describe("default profile and managed process workflow", () => {
         "version = 1",
         "",
         "[profiles.default]",
-        String.raw`command = "sh -c 'echo managed-start; sleep 30'"`,
+        "command = \"sh -c 'echo managed-start; sleep 30'\"",
       ].join("\n"),
     );
 
