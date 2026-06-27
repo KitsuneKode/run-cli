@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { closeSync, openSync, unlinkSync, utimesSync } from "node:fs";
+import { closeSync, openSync, readFileSync, unlinkSync, utimesSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { acquireFileLock, releaseFileLock } from "../src/file-lock.ts";
@@ -73,5 +73,31 @@ describe("file-lock", () => {
         unlinkSync(lockPath);
       } catch {}
     }
+  });
+
+  test("releasing a stale, reclaimed lock does not unlink the new owner's file", async () => {
+    const dir = await createTempDir("lock-race-");
+    const target = path.join(dir, "data.json");
+    const lockPath = `${target}.lock`;
+
+    // 1. Acquire a lock (lockA)
+    const fd = await acquireFileLock(target);
+    expect(await pathExists(lockPath)).toBe(true);
+
+    // 2. Simulate another process taking the lock by unlinking lockPath and writing a different PID (e.g. "99999") into the lockfile
+    unlinkSync(lockPath);
+    writeFileSync(lockPath, "99999", "utf8");
+
+    // 3. Release lockA
+    releaseFileLock(fd, target);
+
+    // 4. Assert that the lock file containing "99999" still exists on disk (was not deleted by lockA's release)
+    expect(await pathExists(lockPath)).toBe(true);
+    expect(readFileSync(lockPath, "utf8").trim()).toBe("99999");
+
+    // 5. Manually cleanup the simulated lock file
+    try {
+      unlinkSync(lockPath);
+    } catch {}
   });
 });
