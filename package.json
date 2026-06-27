@@ -2,27 +2,38 @@
   "name": "@kitsunekode/run-cli",
   "version": "0.1.0",
   "description": "A lightweight Bun-native CLI for running projects through local profiles and smart detection.",
-  "type": "module",
+  "keywords": [
+    "bun",
+    "cli",
+    "profiles",
+    "run",
+    "runner",
+    "shell",
+    "terminal"
+  ],
+  "homepage": "https://github.com/KitsuneKode/run-cli#readme",
+  "bugs": {
+    "url": "https://github.com/KitsuneKode/run-cli/issues"
+  },
   "license": "MIT",
   "author": "kitsunekode",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/KitsuneKode/run-cli.git"
   },
-  "homepage": "https://github.com/KitsuneKode/run-cli#readme",
-  "bugs": {
-    "url": "https://github.com/KitsuneKode/run-cli/issues"
-  },
-  "keywords": ["bun", "cli", "profiles", "run", "runner", "shell", "terminal"],
-  "publishConfig": {
-    "access": "public"
-  },
   "bin": {
     "run": "bin/run"
   },
-  "files": ["bin/run", "dist/run.js", "completions", "README.md", "LICENSE"],
-  "engines": {
-    "bun": ">=1.3.9"
+  "files": [
+    "bin/run",
+    "dist/run.js",
+    "completions",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "bun run src/bin/run.ts",
@@ -44,16 +55,19 @@
     "prepare": "[ -f .git/config ] && [ -w .git/config ] && husky || echo 'Skipping husky install (no writable .git config)'"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@changesets/cli": "^2.30.0",
-    "@commitlint/cli": "^20.1.0",
-    "@commitlint/config-conventional": "^20.0.0",
-    "@types/bun": "latest",
+    "@biomejs/biome": "^2.5.1",
+    "@changesets/cli": "^2.31.0",
+    "@commitlint/cli": "^20.5.3",
+    "@commitlint/config-conventional": "^20.5.3",
+    "@types/bun": "1.3.14",
     "husky": "^9.1.7",
-    "lint-staged": "^15.5.2",
-    "markdownlint-cli2": "^0.18.1"
+    "lint-staged": "^17.0.8",
+    "markdownlint-cli2": "^0.22.1"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "bun": ">=1.3.9"
   }
 }
