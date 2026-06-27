@@ -287,9 +287,9 @@ run ps [--json] [--details] [--watch]
 run dashboard
 run inspect <name|id> [--json]
 run logs <name|id> [--lines <n>] [--follow]
-run stop <name|id>
-run restart <name|id>
-run kill <name|id>
+run stop <name|id> | --all
+run restart <name|id> | --all
+run kill <name|id> | --all
 run prune [--json] [--dry-run]
 run ports [--json]
 run config <view|path|edit|validate> [--global]
@@ -424,7 +424,7 @@ Performance behavior is intentional:
 - `run ps --watch` live-refreshes the process list every 2 seconds
 - `run ps --details` adds port information alongside metrics
 - `run inspect` and `run ports` opt into more detailed process information
-- `run prune` removes dead (exited/stopped) processes from the registry
+- `run prune` removes dead (exited/stopped) processes from the registry and cleans up their log files
 - Memory thresholds warn at 512MB (yellow) and 1GB (red) in the MEM column
 
 This keeps the common path fast and low-overhead.

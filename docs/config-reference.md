@@ -169,9 +169,9 @@ Managed processes are started with `run up` and inspected with:
 - `run ps --details`
 - `run inspect <name|id>`
 - `run logs <name|id>`
-- `run stop <name|id>`
-- `run restart <name|id>`
-- `run kill <name|id>`
+- `run stop <name|id> | --all`
+- `run restart <name|id> | --all`
+- `run kill <name|id> | --all`
 - `run prune [--json] [--dry-run]`
 - `run ports`
 - `run dashboard`
@@ -186,5 +186,5 @@ Performance note:
 
 - `run ps` and `run dashboard` avoid memory and port probing by default to keep overview commands lightweight
 - `run ps --details` opts into richer overview output while keeping the default `run ps` cheap
-- `run prune` removes all dead processes from the registry to keep `run ps` clean
+- `run prune` removes all dead processes from the registry and deletes their orphaned log files from the state directory
 - use `run ports` or `run inspect <name>` when you need listening-port or per-process metric details

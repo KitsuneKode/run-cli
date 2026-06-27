@@ -253,8 +253,12 @@ export function renderBashCompletion(): string {
         return `    config)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "view path edit validate" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--global" -- "$cur"))\n      fi\n      ;;`;
       }
 
-      if (name === "inspect" || name === "stop" || name === "restart" || name === "kill") {
-        return `    ${name})\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "$managed_names" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--json" -- "$cur"))\n      fi\n      ;;`;
+      if (name === "inspect") {
+        return `    inspect)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "$managed_names" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--json" -- "$cur"))\n      fi\n      ;;`;
+      }
+
+      if (name === "stop" || name === "restart" || name === "kill") {
+        return `    ${name})\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "$managed_names --all" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--all" -- "$cur"))\n      fi\n      ;;`;
       }
 
       if (name === "logs") {
