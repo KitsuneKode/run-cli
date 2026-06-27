@@ -28,6 +28,9 @@ export const dashboardCommand: Command = {
     };
 
     if (parsed.watch) {
+      if (!process.stdout.isTTY) {
+        throw new Error("--watch requires an interactive terminal (stdout is not a TTY).");
+      }
       process.stdout.write("\x1B[?25l"); // hide cursor
       process.on("SIGINT", () => {
         process.stdout.write("\x1B[?25h"); // show cursor
