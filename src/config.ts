@@ -2,7 +2,6 @@ import path from "node:path";
 
 import type { CacheStore } from "./cache.ts";
 import {
-  CONFIG_FILE_NAME,
   GLOBAL_CONFIG_VERSION,
   LEGACY_CONFIG_FILE_NAME,
   PROJECT_CONFIG_FILE_NAMES,
@@ -63,6 +62,21 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
     throw new Error(`${sourcePath} must contain a TOML object.`);
   }
 
+  const allowedProjectKeys = new Set([
+    "version",
+    "default_profile",
+    "command",
+    "cwd",
+    "env",
+    "profiles",
+  ]);
+
+  for (const key of Object.keys(parsed)) {
+    if (!allowedProjectKeys.has(key)) {
+      throw new Error(`${sourcePath} contains unknown configuration key "${key}".`);
+    }
+  }
+
   const version = parsed.version;
 
   if (version !== PROJECT_CONFIG_VERSION) {
@@ -115,6 +129,16 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
 
       if (!isPlainObject(profileValue)) {
         throw new Error(`${sourcePath} profiles.${profileName} must be a TOML table.`);
+      }
+
+      const allowedProfileKeys = new Set(["command", "cwd", "env", "description", "alias"]);
+
+      for (const key of Object.keys(profileValue)) {
+        if (!allowedProfileKeys.has(key)) {
+          throw new Error(
+            `${sourcePath} profiles.${profileName} contains unknown profile key "${key}".`,
+          );
+        }
       }
 
       const profile: {
@@ -219,6 +243,14 @@ export async function readGlobalConfig(): Promise<GlobalConfig> {
 
   if (!isPlainObject(parsed)) {
     throw new Error(`${configPath} must contain a TOML object.`);
+  }
+
+  const allowedGlobalKeys = new Set(["version", "shell", "editor", "cache", "detection"]);
+
+  for (const key of Object.keys(parsed)) {
+    if (!allowedGlobalKeys.has(key)) {
+      throw new Error(`${configPath} contains unknown configuration key "${key}".`);
+    }
   }
 
   if (
@@ -394,6 +426,10 @@ export function resolveProfile(
 export function renderProjectConfig(config: RunConfigFile): string {
   const lines: string[] = [`version = ${PROJECT_CONFIG_VERSION}`];
 
+  if (config.command) {
+    lines.push(`command = ${toTomlString(config.command)}`);
+  }
+
   if (config.defaultProfile) {
     lines.push(`default_profile = ${toTomlString(config.defaultProfile)}`);
   }
@@ -426,6 +462,15 @@ export function renderProjectConfig(config: RunConfigFile): string {
 
       if (profile.description) {
         lines.push(`description = ${toTomlString(profile.description)}`);
+      }
+
+      if (profile.alias) {
+        if (Array.isArray(profile.alias)) {
+          const list = profile.alias.map(toTomlString).join(", ");
+          lines.push(`alias = [${list}]`);
+        } else {
+          lines.push(`alias = ${toTomlString(profile.alias)}`);
+        }
       }
 
       if (profile.env && Object.keys(profile.env).length > 0) {
@@ -473,7 +518,7 @@ export function listProfiles(config: RunConfigFile): Array<{
       continue;
     }
 
-    const existingIsDefault = profiles.get("default")?.isDefault ?? false;
+    const _existingIsDefault = profiles.get("default")?.isDefault ?? false;
     profiles.set(name, {
       name,
       command: profile.command,

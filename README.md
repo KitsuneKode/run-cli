@@ -77,20 +77,27 @@ You can also run profiles directly by typing the alias suffix (e.g. `rund` or `r
 
 ### 3. Child arguments
 
-Anything after `--` belongs to your app, not the CLI:
+By default, any arguments or flags that do not conflict with `run`'s built-in options (like `-p`, `--dry-run`, `--cwd`, `--config`, etc.) are automatically forwarded to the child command. You do not need to prefix them with `--`.
+
+Example (forwarded automatically):
 
 ```bash
-run -- --watch
-run -p dev -- --port 3000
+run --port 3000
+run -p dev --watch --host 0.0.0.0
+```
+
+However, if you want to pass an argument or flag that conflicts with a built-in `run` command or option (like `--help`, `-p`, `doctor`, or `logs`), you must separate it with `--`:
+
+```bash
+run -- --help
+run -p dev -- -p
 run -- doctor
 ```
 
-This is how you pass words like `doctor`, `inspect`, or `ports` to the underlying project command instead of triggering `run` subcommands.
-
 Rule of thumb:
 
-- before `--` = `run` CLI territory
-- after `--` = child command territory
+- Flags/arguments that do not conflict are forwarded automatically.
+- For conflicting keywords (like `doctor` or `--help`), anything after `--` goes to the child command untouched.
 
 ## Why it exists
 
@@ -158,7 +165,14 @@ run -p dev
 run -- --watch
 ```
 
-Minimal config example:
+Minimal config example (single default command):
+
+```toml
+version = 1
+command = "bun run index.ts"
+```
+
+Minimal config example (with named profiles):
 
 ```toml
 version = 1
@@ -169,6 +183,7 @@ command = "bun run index.ts"
 
 [profiles.dev]
 command = "bun --hot index.ts"
+alias = "d"
 ```
 
 ## How to use it day to day
@@ -483,8 +498,6 @@ command = "bun --hot src/index.ts"
 
 ```toml
 version = 1
-
-[profiles.default]
 command = "node index.js"
 ```
 
@@ -511,8 +524,6 @@ If project-native tooling is present, `run init` prefers explicit commands like:
 
 ```toml
 version = 1
-
-[profiles.default]
 command = "go run ."
 ```
 

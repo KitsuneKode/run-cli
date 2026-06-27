@@ -206,24 +206,29 @@ export async function runInit(options: InitOptions): Promise<{
     }
   }
 
-  const profiles: Record<string, Partial<ProfileConfig>> = {};
-
-  for (const profile of extraProfiles) {
-    profiles[profile.name] = {
-      command: profile.command,
-    };
-  }
-
-  // Always write the default command into profiles.default
-  profiles.default = {
-    command,
-  };
-
   const config: RunConfigFile = {
     version: 1,
-    defaultProfile,
-    profiles,
   };
+
+  if (extraProfiles.length === 0 && defaultProfile === "default") {
+    config.command = command;
+  } else {
+    const profiles: Record<string, Partial<ProfileConfig>> = {};
+
+    for (const profile of extraProfiles) {
+      profiles[profile.name] = {
+        command: profile.command,
+      };
+    }
+
+    // Always write the default command into profiles.default
+    profiles.default = {
+      command,
+    };
+
+    config.defaultProfile = defaultProfile;
+    config.profiles = profiles;
+  }
 
   await writeTextFile(configPath, renderProjectConfig(config));
 

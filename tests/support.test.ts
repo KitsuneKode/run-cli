@@ -10,6 +10,7 @@ import {
   listFiles,
   normalizeEnv,
   pathExists,
+  readTextFile,
   statFingerprint,
   toPosixPath,
   walkUpDirectories,
@@ -129,6 +130,7 @@ describe("support modules", () => {
         profiles: {
           dev: {
             command: "bun run dev.ts",
+            alias: "d",
             env: {
               DEBUG: true,
             },
@@ -136,6 +138,10 @@ describe("support modules", () => {
         },
       }),
     );
+
+    const renderedToml = await readTextFile(projectConfigPath);
+    expect(renderedToml).toContain('command = "bun run index.ts"');
+    expect(renderedToml).toContain('alias = "d"');
 
     await withEnv(
       {

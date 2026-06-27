@@ -163,6 +163,42 @@ describe("config resolution", () => {
 
     expect(secondResolved?.sourcePath).toBe(path.join(nearerDir, CONFIG_FILE_NAME));
   });
+
+  test("errors on unknown configuration keys", async () => {
+    const projectRoot = await createTempProject();
+    const cacheStore = new CacheStore(path.join(projectRoot, ".cache", "run-cache.json"));
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", 'command = "echo hello"', "unknown_field = 42"].join("\n"),
+    );
+
+    await expect(
+      resolveProjectConfig({
+        cwd: projectRoot,
+        useCache: true,
+        cacheStore,
+      }),
+    ).rejects.toThrow("contains unknown configuration key");
+  });
+
+  test("errors on unknown profile keys", async () => {
+    const projectRoot = await createTempProject();
+    const cacheStore = new CacheStore(path.join(projectRoot, ".cache", "run-cache.json"));
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      ["version = 1", "", "[profiles.dev]", 'command = "echo dev"', "typo_field = true"].join("\n"),
+    );
+
+    await expect(
+      resolveProjectConfig({
+        cwd: projectRoot,
+        useCache: true,
+        cacheStore,
+      }),
+    ).rejects.toThrow("contains unknown profile key");
+  });
 });
 
 describe("listShortcutNames", () => {
