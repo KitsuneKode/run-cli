@@ -1,7 +1,5 @@
-import type { ParsedArgs } from "../args.ts";
 import { listProfiles, listShortcutNames } from "../config.ts";
 import { CONFIG_FILE_NAME } from "../constants.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
 import type { Command } from "./types.ts";
 

@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export async function pathExists(targetPath: string): Promise<boolean> {

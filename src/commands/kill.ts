@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
 import { signalManagedProcess } from "../process-manager.ts";
 import { ProcessRegistry } from "../process-registry.ts";
@@ -9,7 +7,7 @@ export const killCommand: Command = {
   name: "kill",
   description: "Forcefully kill a running managed process",
   usage: "<name|id>",
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const identifier = parsed.positionals[1];
     if (!identifier) {
       throw new Error("Usage: run kill <name|id>");

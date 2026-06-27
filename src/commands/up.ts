@@ -1,8 +1,6 @@
-import type { ParsedArgs } from "../args.ts";
 import { renderProcessBanner } from "../command-line.ts";
 import { resolveProfile } from "../config.ts";
 import { CONFIG_FILE_NAME } from "../constants.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { dim, info, magenta } from "../output.ts";
 import { startManagedProcess } from "../process-manager.ts";
 import { ProcessRegistry } from "../process-registry.ts";

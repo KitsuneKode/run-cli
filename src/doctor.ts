@@ -1,5 +1,4 @@
-import { CONFIG_FILE_NAME } from "./constants.ts";
-import { FALLBACK_SHELL } from "./constants.ts";
+import { CONFIG_FILE_NAME, FALLBACK_SHELL } from "./constants.ts";
 import { getCacheFilePath, getGlobalConfigPath } from "./env-paths.ts";
 import type { DetectedProject, GlobalConfig, ResolvedConfig } from "./types.ts";
 

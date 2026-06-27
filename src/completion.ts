@@ -246,22 +246,22 @@ export function renderBashCompletion(): string {
       }
 
       if (name === "completion") {
-        return `    completion)\n      COMPREPLY=(\$(compgen -W "zsh bash --shell-hook" -- "\$cur"))\n      ;;`;
+        return `    completion)\n      COMPREPLY=($(compgen -W "zsh bash --shell-hook" -- "$cur"))\n      ;;`;
       }
 
       if (name === "config") {
-        return `    config)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=(\$(compgen -W "view path edit validate" -- "\$cur"))\n      else\n        COMPREPLY=(\$(compgen -W "--global" -- "\$cur"))\n      fi\n      ;;`;
+        return `    config)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "view path edit validate" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--global" -- "$cur"))\n      fi\n      ;;`;
       }
 
       if (name === "inspect" || name === "stop" || name === "restart" || name === "kill") {
-        return `    ${name})\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=(\$(compgen -W "\$managed_names" -- "\$cur"))\n      else\n        COMPREPLY=(\$(compgen -W "--json" -- "\$cur"))\n      fi\n      ;;`;
+        return `    ${name})\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "$managed_names" -- "$cur"))\n      else\n        COMPREPLY=($(compgen -W "--json" -- "$cur"))\n      fi\n      ;;`;
       }
 
       if (name === "logs") {
-        return `    logs)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=(\$(compgen -W "\$managed_names" -- "\$cur"))\n      elif [[ "\$prev" == "--lines" ]]; then\n        return 0\n      else\n        COMPREPLY=(\$(compgen -W "--lines --follow -f" -- "\$cur"))\n      fi\n      ;;`;
+        return `    logs)\n      if [[ \${COMP_CWORD} -eq 2 ]]; then\n        COMPREPLY=($(compgen -W "$managed_names" -- "$cur"))\n      elif [[ "$prev" == "--lines" ]]; then\n        return 0\n      else\n        COMPREPLY=($(compgen -W "--lines --follow -f" -- "$cur"))\n      fi\n      ;;`;
       }
 
-      return `    ${name})\n${prevCheck}      COMPREPLY=(\$(compgen -W "${flagListStr}" -- "\$cur"))\n      ;;`;
+      return `    ${name})\n${prevCheck}      COMPREPLY=($(compgen -W "${flagListStr}" -- "$cur"))\n      ;;`;
     })
     .join("\n");
 

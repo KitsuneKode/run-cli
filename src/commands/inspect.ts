@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { renderManagedProcessDetails } from "../managed-process-view.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
@@ -13,7 +11,7 @@ export const inspectCommand: Command = {
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const identifier = parsed.positionals[1];
     if (!identifier) {
       throw new Error("Usage: run inspect <name|id>");

@@ -1,13 +1,11 @@
 import os from "node:os";
 import path from "node:path";
-import type { ParsedArgs } from "../args.ts";
 import {
   renderBashCompletion,
   renderBashShellHook,
   renderZshCompletion,
   renderZshShellHook,
 } from "../completion.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { pathExists, readTextFile, writeTextFile } from "../fs.ts";
 import { info, warn } from "../output.ts";
 import type { Command } from "./types.ts";
@@ -23,7 +21,7 @@ export const completionCommand: Command = {
       description: "Automatically install the shell hook script to shell rc",
     },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const shell = parsed.positionals[1];
     const shellHook = parsed.shellHook;
     const install = parsed.install;

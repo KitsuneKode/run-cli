@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
 import type { Command } from "./types.ts";
@@ -11,7 +9,7 @@ export const portsCommand: Command = {
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const registry = new ProcessRegistry();
     const snapshots = await registry.withLock(() =>
       registry.listSnapshots({

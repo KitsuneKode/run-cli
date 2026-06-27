@@ -1,6 +1,4 @@
 import { spawn } from "node:child_process";
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { pathExists, readTextFile } from "../fs.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
@@ -15,7 +13,7 @@ export const logsCommand: Command = {
     follow: { type: "boolean", short: "f", description: "Stream log changes" },
     lines: { type: "number", description: "Number of trailing lines to show" },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const identifier = parsed.positionals[1];
     if (!identifier) {
       throw new Error("Usage: run logs <name|id>");

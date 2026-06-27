@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { runInit } from "../init.ts";
 import { dim, info } from "../output.ts";
 import type { Command } from "./types.ts";

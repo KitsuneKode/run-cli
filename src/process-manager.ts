@@ -7,12 +7,7 @@ import { sleep } from "./fs.ts";
 import { getProcessStartTime, isProcessRunning } from "./process-metrics.ts";
 import type { ProcessRegistry } from "./process-registry.ts";
 import { detectProjectName } from "./project-name.ts";
-import type {
-  GlobalConfig,
-  ManagedProcessRecord,
-  ManagedProcessSnapshot,
-  ResolvedProfile,
-} from "./types.ts";
+import type { GlobalConfig, ManagedProcessRecord, ResolvedProfile } from "./types.ts";
 
 function effectiveShell(globalConfig: GlobalConfig): string {
   return globalConfig.shell ?? process.env.SHELL ?? FALLBACK_SHELL;

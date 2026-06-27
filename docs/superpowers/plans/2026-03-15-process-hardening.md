@@ -13,7 +13,7 @@
 ## File Map
 
 | File | Action | Responsibility |
-|------|--------|----------------|
+| ------ | -------- | ---------------- |
 | `src/file-lock.ts` | Create | Lockfile acquire/release with stale detection |
 | `src/process-metrics.ts` | Modify | Add `getProcessStartTime()`, update `isProcessRunning()` signature |
 | `src/process-registry.ts` | Modify | Wrap mutating methods with file lock, pass start time to liveness checks |

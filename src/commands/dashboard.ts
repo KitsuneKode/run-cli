@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { sleep } from "../fs.ts";
 import { renderManagedDashboard } from "../managed-process-view.ts";
 import { info } from "../output.ts";
@@ -17,7 +15,7 @@ export const dashboardCommand: Command = {
       description: "Keep running and refreshing dashboard",
     },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const registry = new ProcessRegistry();
     const renderAndPrint = async () => {
       const snapshots = await registry.withLock(() =>

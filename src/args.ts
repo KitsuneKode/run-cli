@@ -1,6 +1,8 @@
 import path from "node:path";
 import type { FlagDefinition } from "./command.ts";
+
 export type { FlagDefinition };
+
 import { commands } from "./commands/index.ts";
 import { RESERVED_COMMANDS } from "./constants.ts";
 

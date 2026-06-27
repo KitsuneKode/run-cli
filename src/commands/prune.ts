@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
 import type { Command } from "./types.ts";
@@ -12,7 +10,7 @@ export const pruneCommand: Command = {
     "dry-run": { type: "boolean", description: "Only print what would be pruned" },
     json: { type: "boolean", description: "Format output as JSON" },
   },
-  execute: async (ctx, parsed) => {
+  execute: async (_ctx, parsed) => {
     const registry = new ProcessRegistry();
     const dryRun = parsed.dryRun;
     const { removed, kept, cleaned } = await registry.withLock(() => registry.prune({ dryRun }));

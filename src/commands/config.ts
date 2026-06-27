@@ -1,8 +1,6 @@
 import { spawn } from "node:child_process";
-import type { ParsedArgs } from "../args.ts";
 import { renderGlobalConfig } from "../config.ts";
 import { CONFIG_FILE_NAME, FALLBACK_SHELL } from "../constants.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { getGlobalConfigPath } from "../env-paths.ts";
 import { pathExists, readTextFile, writeTextFile } from "../fs.ts";
 import { info, warn } from "../output.ts";

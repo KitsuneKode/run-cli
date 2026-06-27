@@ -183,7 +183,7 @@ async function maybeHandlePositionalProfileMigration(options: {
     [
       "positional profiles were removed.",
       `Use: run -p ${matchedProfile.name}`,
-      `To pass \"${matchedProfile.name}\" to the default command, use: run -- ${options.commandArgs.join(" ")}`,
+      `To pass "${matchedProfile.name}" to the default command, use: run -- ${options.commandArgs.join(" ")}`,
     ].join(" "),
   );
 }

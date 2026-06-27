@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { info } from "../output.ts";
 import { restartManagedProcess } from "../process-manager.ts";
 import { ProcessRegistry } from "../process-registry.ts";

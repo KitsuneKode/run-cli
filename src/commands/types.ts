@@ -1,5 +1,4 @@
-import type { ParsedArgs } from "../args.ts";
-import type { FlagDefinition } from "../args.ts";
+import type { FlagDefinition, ParsedArgs } from "../args.ts";
 import type { WorkspaceContext } from "../context.ts";
 
 export interface Command {

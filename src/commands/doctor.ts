@@ -1,5 +1,3 @@
-import type { ParsedArgs } from "../args.ts";
-import type { WorkspaceContext } from "../context.ts";
 import { detectProject } from "../detect.ts";
 import { doctorReportData, renderDoctorReport } from "../doctor.ts";
 import { info } from "../output.ts";
