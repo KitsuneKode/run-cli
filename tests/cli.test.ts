@@ -13,12 +13,19 @@ async function createTempProject(prefix: string): Promise<string> {
 }
 
 async function runCli(args: string[], cwd: string, extraEnv: Record<string, string> = {}) {
+  const stateHome = extraEnv.XDG_STATE_HOME ?? path.join(cwd, ".state");
+  const cacheHome = extraEnv.XDG_CACHE_HOME ?? path.join(cwd, ".cache");
+  const configHome = extraEnv.XDG_CONFIG_HOME ?? path.join(cwd, ".config");
+
   const command = Bun.spawn(["bun", "src/bin/run.ts", ...args], {
     cwd: `${import.meta.dir}/..`,
     stdout: "pipe",
     stderr: "pipe",
     env: {
       ...process.env,
+      XDG_STATE_HOME: stateHome,
+      XDG_CACHE_HOME: cacheHome,
+      XDG_CONFIG_HOME: configHome,
       ...extraEnv,
       RUN_TEST_CWD: cwd,
     },
