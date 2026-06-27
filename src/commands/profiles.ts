@@ -49,7 +49,7 @@ export const profilesCommand: Command = {
         ? ` [${Array.isArray(profile.alias) ? profile.alias.join(",") : profile.alias}]`
         : "";
       const nameCell = `${profile.name}${aliasSuffix}`.padEnd(nameWidth);
-      const descSuffix = profile.description ? `  ${profile.description}` : "";
+      const descSuffix = profile.description ? ` - ${profile.description}` : "";
       info(`${marker} ${nameCell}  ${profile.command}${descSuffix}`);
     }
   },

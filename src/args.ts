@@ -37,6 +37,7 @@ export interface ParsedArgs {
   check: boolean;
   revoke: boolean;
   list: boolean;
+  all: boolean;
 }
 
 export const COMMAND_SCHEMAS: Record<
@@ -89,6 +90,7 @@ export function parseArgs(argv: string[]): ParsedArgs {
     check: false,
     revoke: false,
     list: false,
+    all: false,
   };
 
   // 1. Separate global/top-level flags
@@ -297,6 +299,8 @@ function mapFlagValue(
   } else if (cmdName === "run") {
     if (flagName === "profile") parsed.profileName = value as string;
     else if (flagName === "dry-run") parsed.dryRun = value as boolean;
+  } else if (cmdName === "stop" || cmdName === "kill" || cmdName === "restart") {
+    if (flagName === "all") parsed.all = value as boolean;
   }
 }
 

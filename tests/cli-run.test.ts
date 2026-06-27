@@ -251,4 +251,53 @@ describe("direct cli run()", () => {
       },
     );
   });
+
+  test("doctor reports tool availability", async () => {
+    const projectRoot = await createTempDir("run-cli-doctor-");
+    await withEnv(
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
+      },
+      async () => {
+        const result = await captureConsole(async () => {
+          await run(["doctor", "--cwd", projectRoot]);
+        });
+        expect(result.stdout).toContain("tools: ps=");
+        expect(result.stdout).toContain("lsof=");
+      },
+    );
+  });
+
+  test("watch mode throws on non-TTY stdout", async () => {
+    const projectRoot = await createTempDir("run-cli-watch-tty-");
+    const originalIsTTY = process.stdout.isTTY;
+    process.stdout.isTTY = false;
+
+    try {
+      await withEnv(
+        {
+          XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+          XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+          XDG_STATE_HOME: path.join(projectRoot, ".state"),
+        },
+        async () => {
+          const resultPs = await captureConsole(async () => {
+            await run(["ps", "--watch", "--cwd", projectRoot]);
+          });
+          expect(resultPs.exitCode).toBe(1);
+          expect(resultPs.stderr).toContain("error: --watch requires an interactive terminal");
+
+          const resultDash = await captureConsole(async () => {
+            await run(["dashboard", "--watch", "--cwd", projectRoot]);
+          });
+          expect(resultDash.exitCode).toBe(1);
+          expect(resultDash.stderr).toContain("error: --watch requires an interactive terminal");
+        },
+      );
+    } finally {
+      process.stdout.isTTY = originalIsTTY;
+    }
+  });
 });

@@ -93,7 +93,17 @@ async function openInEditor(targetPath: string, globalConfig: GlobalConfig): Pro
       reject(new Error(`Editor exited with code ${code ?? 1}.`));
     });
 
-    child.on("error", reject);
+    child.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "ENOENT") {
+        reject(
+          new Error(
+            `Editor '${editor}' was not found. Set a different editor with: run config edit --global`,
+          ),
+        );
+      } else {
+        reject(err);
+      }
+    });
   });
 }
 

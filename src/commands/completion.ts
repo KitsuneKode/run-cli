@@ -67,5 +67,5 @@ async function installShellHook(shell: "zsh" | "bash"): Promise<void> {
 
   await writeTextFile(rcFilePath, content + appendSnippet);
   info(`Successfully installed shell hook to ~/${rcFileName}.`);
-  warn(`Reload your shell to activate: source ~/${rcFileName}`);
+  warn(`Please run: source ~/${rcFileName} (or restart your terminal) to enable completions.`);
 }

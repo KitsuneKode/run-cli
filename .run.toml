@@ -1,26 +1,34 @@
 version = 1
 default_profile = "dev"
 
-# Global environment variables applied to all profiles
 [env]
 PAGER = "cat"
-NODE_ENV = "development"
 
 [profiles.default]
 command = "bun test"
-description = "Run the unit and integration test suite once."
+description = "Run the full test suite once."
 alias = "t"
 
 [profiles.dev]
 command = "bun test --watch"
 description = "Watch tests while iterating on the CLI."
 alias = "d"
-env = { WATCH_MODE = "true" }
+env = { NODE_ENV = "development" }
 
 [profiles.lint]
 command = "bun run lint"
-description = "Run Biome formatting and MarkdownLint checks."
+description = "Run Biome and MarkdownLint checks."
 alias = "l"
+
+[profiles.format]
+command = "bun run format"
+description = "Auto-fix formatting with Biome."
+alias = "f"
+
+[profiles.typecheck]
+command = "bun run typecheck"
+description = "Run TypeScript type checks."
+alias = "tc"
 
 [profiles.build]
 command = "bun run build"
@@ -29,5 +37,5 @@ alias = "b"
 
 [profiles.check]
 command = "bun run check"
-description = "Run full quality gates (formatting + compile + tests)."
+description = "Run full quality gates: typecheck + lint + tests."
 alias = "ck"

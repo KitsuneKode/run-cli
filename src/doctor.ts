@@ -1,6 +1,16 @@
+import { spawnSync } from "node:child_process";
 import { CONFIG_FILE_NAME, FALLBACK_SHELL } from "./constants.ts";
 import { getCacheFilePath, getGlobalConfigPath } from "./env-paths.ts";
 import type { DetectedProject, GlobalConfig, ResolvedConfig } from "./types.ts";
+
+function isToolAvailable(cmd: string, args: string[]): boolean {
+  try {
+    const result = spawnSync(cmd, args, { stdio: "ignore" });
+    return (result.error as NodeJS.ErrnoException | undefined)?.code !== "ENOENT";
+  } catch {
+    return false;
+  }
+}
 
 export function doctorReportData(input: {
   cwd: string;
@@ -29,6 +39,10 @@ export function doctorReportData(input: {
           suggestions: input.detectedProject.suggestions,
         }
       : null,
+    tools: {
+      ps: isToolAvailable("ps", ["-p", "1"]),
+      lsof: isToolAvailable("lsof", ["-p", "1"]),
+    },
   };
 }
 
@@ -39,6 +53,8 @@ export function renderDoctorReport(input: {
   detectedProject: DetectedProject | null;
 }): string {
   const report = doctorReportData(input);
+  const psStatus = report.tools.ps ? "ok" : "missing (ports/memory unavailable)";
+  const lsofStatus = report.tools.lsof ? "ok" : "missing (port listing unavailable)";
   const lines = [
     `cwd: ${report.cwd}`,
     `config lookup: ${
@@ -50,6 +66,7 @@ export function renderDoctorReport(input: {
     `cache file: ${report.cacheFilePath}`,
     `shell: ${report.shell}`,
     `cache enabled: ${String(report.cacheEnabled)}`,
+    `tools: ps=${psStatus}, lsof=${lsofStatus}`,
   ];
 
   if (report.detectedProject) {
