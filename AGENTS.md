@@ -26,6 +26,7 @@
 - `.github/workflows/ci.yml` validates pull requests and `main` with `bun run check` and `bun run pkg:check`, and records the validated package version in the workflow summary.
 - `.github/workflows/release.yml` runs on pushes to `main` and manual dispatch. It uses npm trusted publishing from `release.yml` to publish the exact `package.json` version and create a GitHub release tagged `vX.Y.Z`.
 - For brand-new packages, bootstrap the first publish manually so the npm package settings page exists and can be connected to the trusted publisher.
+- To publish locally: `bun run publish` (check → build → npm publish). For a full local release with changeset versioning: `bun run release`.
 
 ## Required companion updates
 
@@ -34,6 +35,7 @@ When changing CLI semantics, command output, config lookup, or profile behavior,
 - parser and unit tests
 - CLI integration tests
 - shell completions (`src/completion.ts` — both zsh and bash)
+- `RESERVED_COMMANDS` set in `src/constants.ts` (must stay in sync with command names in `src/commands/index.ts` — this is a static hardcoded list, not auto-derived, to avoid a Node.js ESM circular-import crash)
 - `README.md`
 - `docs/config-reference.md`, `docs/architecture.md`, `docs/contributing.md`
 - `CLAUDE.md` and this file

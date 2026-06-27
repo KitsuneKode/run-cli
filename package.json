@@ -45,6 +45,8 @@
     "typecheck": "bunx tsc --noEmit",
     "check": "bun run typecheck && bun run lint && bun test",
     "pkg:check": "bun run build && npm pack --dry-run --ignore-scripts",
+    "publish": "bun run check && bun run build && npm publish --access public",
+    "release": "bun run version:packages && bun run publish",
     "changeset": "changeset",
     "version:packages": "changeset version",
     "link:global": "bun run build && bun link",

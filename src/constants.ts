@@ -14,26 +14,31 @@ export const PROJECT_CONFIG_VERSION = 1;
 export const PROCESS_REGISTRY_VERSION = 1;
 export const FALLBACK_SHELL = "/bin/sh";
 
-class LazyReservedCommandsSet extends Set<string> {
-  private _initialized = false;
-
-  private _init() {
-    if (this._initialized) return;
-    this._initialized = true;
-    const { commands } = require("./commands/index.ts");
-    for (const cmd of commands) {
-      this.add(cmd.name);
-    }
-    this.add("help");
-  }
-
-  override has(value: string): boolean {
-    this._init();
-    return super.has(value);
-  }
-}
-
-export const RESERVED_COMMANDS = new LazyReservedCommandsSet();
+// Hardcoded set of reserved subcommand names.
+// These must stay in sync with the command objects in src/commands/index.ts.
+// Using a static Set breaks the circular dependency:
+//   constants.ts → commands/index.ts → args.ts → constants.ts
+// which caused a Node.js ESM "require is not defined" crash when
+// the old LazyReservedCommandsSet used require() to defer the import.
+export const RESERVED_COMMANDS = new Set<string>([
+  "init",
+  "config",
+  "completion",
+  "doctor",
+  "trust",
+  "up",
+  "ps",
+  "dashboard",
+  "inspect",
+  "logs",
+  "stop",
+  "restart",
+  "kill",
+  "prune",
+  "ports",
+  "profiles",
+  "help",
+]);
 
 export const ENTRYPOINT_CANDIDATES = [
   "index.ts",
