@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { pathExists, readTextFile } from "../fs.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { ManagedProcessSnapshot } from "../types.ts";
 import type { Command } from "./types.ts";
 
@@ -13,7 +14,8 @@ export const logsCommand: Command = {
     follow: { type: "boolean", short: "f", description: "Stream log changes" },
     lines: { type: "number", description: "Number of trailing lines to show" },
   },
-  execute: async (_ctx, parsed) => {
+  execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const identifier = parsed.positionals[1];
     if (!identifier) {
       throw new Error("Usage: run logs <name|id>");

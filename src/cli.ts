@@ -6,7 +6,7 @@ import { CONFIG_FILE_NAME, RESERVED_COMMANDS } from "./constants.ts";
 import { WorkspaceContext } from "./context.ts";
 import { detectProject } from "./detect.ts";
 import { runResolvedProfile } from "./exec.ts";
-import { dim, info, red, warn } from "./output.ts";
+import { dim, info, red, setForceNoColor, warn } from "./output.ts";
 import type { ResolvedConfig } from "./types.ts";
 
 const SAFE_HEAP_LIMIT_MB = 256;
@@ -113,7 +113,13 @@ async function handleRunCommand(
     commandArgs: options.commandArgs,
   });
 
-  const profile = resolveProfile(resolvedConfig, options.profileName);
+  const globalConfig = await ctx.getGlobalConfig();
+  const profile = resolveProfile(resolvedConfig, options.profileName, undefined, globalConfig);
+
+  if (profile.no_color) {
+    setForceNoColor(true);
+  }
+
   const commandLine = resolveCommandLine(profile, options.commandArgs);
 
   if (options.dryRun) {
@@ -123,7 +129,9 @@ async function handleRunCommand(
       info(dim(`profile=${profile.name} cwd=${profile.cwd} config=${profile.sourcePath}`));
     }
   } else {
-    info(renderMinimalBanner(commandLine));
+    if (!profile.no_banner) {
+      info(renderMinimalBanner(commandLine));
+    }
 
     if (resolvedConfig.isLegacyPath) {
       info(
@@ -146,7 +154,6 @@ async function handleRunCommand(
     }
   }
 
-  const globalConfig = await ctx.getGlobalConfig();
   const exitCode = await runResolvedProfile(profile, globalConfig, {
     dryRun: options.dryRun,
     args: options.commandArgs,

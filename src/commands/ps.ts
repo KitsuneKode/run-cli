@@ -2,6 +2,7 @@ import { sleep } from "../fs.ts";
 import { renderManagedProcessList } from "../managed-process-view.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { Command } from "./types.ts";
 
 export const psCommand: Command = {
@@ -13,7 +14,8 @@ export const psCommand: Command = {
     details: { type: "boolean", description: "Include listening ports" },
     watch: { type: "boolean", short: "w", description: "Keep running and refreshing output" },
   },
-  execute: async (_ctx, parsed) => {
+  execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const registry = new ProcessRegistry();
     const renderAndPrint = async () => {
       const snapshots = await registry.withLock(() =>

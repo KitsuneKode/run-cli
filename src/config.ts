@@ -48,7 +48,7 @@ function assertEnvMap(value: unknown, fieldName: string): EnvMap | undefined {
   return envEntries;
 }
 
-function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile {
+export function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile {
   let parsed: unknown;
 
   try {
@@ -69,6 +69,10 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
     "cwd",
     "env",
     "profiles",
+    "login_shell",
+    "no_color",
+    "no_banner",
+    "process_management",
   ]);
 
   for (const key of Object.keys(parsed)) {
@@ -115,6 +119,34 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
 
   config.env = assertEnvMap(parsed.env, "env");
 
+  if (parsed.login_shell !== undefined) {
+    if (typeof parsed.login_shell !== "boolean") {
+      throw new Error(`${sourcePath} login_shell must be a boolean.`);
+    }
+    config.login_shell = parsed.login_shell;
+  }
+
+  if (parsed.no_color !== undefined) {
+    if (typeof parsed.no_color !== "boolean") {
+      throw new Error(`${sourcePath} no_color must be a boolean.`);
+    }
+    config.no_color = parsed.no_color;
+  }
+
+  if (parsed.no_banner !== undefined) {
+    if (typeof parsed.no_banner !== "boolean") {
+      throw new Error(`${sourcePath} no_banner must be a boolean.`);
+    }
+    config.no_banner = parsed.no_banner;
+  }
+
+  if (parsed.process_management !== undefined) {
+    if (typeof parsed.process_management !== "boolean") {
+      throw new Error(`${sourcePath} process_management must be a boolean.`);
+    }
+    config.process_management = parsed.process_management;
+  }
+
   if (parsed.profiles !== undefined) {
     if (!isPlainObject(parsed.profiles)) {
       throw new Error(`${sourcePath} profiles must be a TOML table.`);
@@ -131,7 +163,17 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         throw new Error(`${sourcePath} profiles.${profileName} must be a TOML table.`);
       }
 
-      const allowedProfileKeys = new Set(["command", "cwd", "env", "description", "alias"]);
+      const allowedProfileKeys = new Set([
+        "command",
+        "cwd",
+        "env",
+        "description",
+        "alias",
+        "login_shell",
+        "no_color",
+        "no_banner",
+        "process_management",
+      ]);
 
       for (const key of Object.keys(profileValue)) {
         if (!allowedProfileKeys.has(key)) {
@@ -147,6 +189,10 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         env?: EnvMap;
         description?: string;
         alias?: string | string[];
+        login_shell?: boolean;
+        no_color?: boolean;
+        no_banner?: boolean;
+        process_management?: boolean;
       } = {};
 
       if (profileValue.command !== undefined) {
@@ -206,6 +252,36 @@ function parseProjectConfig(rawText: string, sourcePath: string): RunConfigFile 
         }
       }
 
+      if (profileValue.login_shell !== undefined) {
+        if (typeof profileValue.login_shell !== "boolean") {
+          throw new Error(`${sourcePath} profiles.${profileName}.login_shell must be a boolean.`);
+        }
+        profile.login_shell = profileValue.login_shell;
+      }
+
+      if (profileValue.no_color !== undefined) {
+        if (typeof profileValue.no_color !== "boolean") {
+          throw new Error(`${sourcePath} profiles.${profileName}.no_color must be a boolean.`);
+        }
+        profile.no_color = profileValue.no_color;
+      }
+
+      if (profileValue.no_banner !== undefined) {
+        if (typeof profileValue.no_banner !== "boolean") {
+          throw new Error(`${sourcePath} profiles.${profileName}.no_banner must be a boolean.`);
+        }
+        profile.no_banner = profileValue.no_banner;
+      }
+
+      if (profileValue.process_management !== undefined) {
+        if (typeof profileValue.process_management !== "boolean") {
+          throw new Error(
+            `${sourcePath} profiles.${profileName}.process_management must be a boolean.`,
+          );
+        }
+        profile.process_management = profileValue.process_management;
+      }
+
       profile.env = assertEnvMap(profileValue.env, `profiles.${profileName}.env`);
       config.profiles[profileName] = profile;
     }
@@ -245,7 +321,17 @@ export async function readGlobalConfig(): Promise<GlobalConfig> {
     throw new Error(`${configPath} must contain a TOML object.`);
   }
 
-  const allowedGlobalKeys = new Set(["version", "shell", "editor", "cache", "detection"]);
+  const allowedGlobalKeys = new Set([
+    "version",
+    "shell",
+    "editor",
+    "cache",
+    "detection",
+    "login_shell",
+    "no_color",
+    "no_banner",
+    "process_management",
+  ]);
 
   for (const key of Object.keys(parsed)) {
     if (!allowedGlobalKeys.has(key)) {
@@ -276,12 +362,33 @@ export async function readGlobalConfig(): Promise<GlobalConfig> {
     throw new Error(`${configPath} detection currently only supports "suggest".`);
   }
 
+  if (parsed.login_shell !== undefined && typeof parsed.login_shell !== "boolean") {
+    throw new Error(`${configPath} login_shell must be a boolean.`);
+  }
+
+  if (parsed.no_color !== undefined && typeof parsed.no_color !== "boolean") {
+    throw new Error(`${configPath} no_color must be a boolean.`);
+  }
+
+  if (parsed.no_banner !== undefined && typeof parsed.no_banner !== "boolean") {
+    throw new Error(`${configPath} no_banner must be a boolean.`);
+  }
+
+  if (parsed.process_management !== undefined && typeof parsed.process_management !== "boolean") {
+    throw new Error(`${configPath} process_management must be a boolean.`);
+  }
+
   return {
     version: typeof parsed.version === "number" ? parsed.version : GLOBAL_CONFIG_VERSION,
     shell: typeof parsed.shell === "string" ? parsed.shell : undefined,
     editor: typeof parsed.editor === "string" ? parsed.editor : undefined,
     cache: typeof parsed.cache === "boolean" ? parsed.cache : true,
     detection: "suggest",
+    login_shell: typeof parsed.login_shell === "boolean" ? parsed.login_shell : undefined,
+    no_color: typeof parsed.no_color === "boolean" ? parsed.no_color : undefined,
+    no_banner: typeof parsed.no_banner === "boolean" ? parsed.no_banner : undefined,
+    process_management:
+      typeof parsed.process_management === "boolean" ? parsed.process_management : undefined,
   };
 }
 
@@ -378,6 +485,7 @@ export function resolveProfile(
   resolvedConfig: ResolvedConfig,
   profileName: string | undefined,
   overrideCwd?: string,
+  globalConfig?: GlobalConfig,
 ): ResolvedProfile {
   const { config, configDir, sourcePath } = resolvedConfig;
   let selectedName = profileName ?? config.defaultProfile ?? "default";
@@ -412,6 +520,19 @@ export function resolveProfile(
     ...(profileEntry?.env ?? {}),
   };
 
+  const noColor = profileEntry?.no_color ?? config.no_color ?? globalConfig?.no_color ?? false;
+
+  const noBanner = profileEntry?.no_banner ?? config.no_banner ?? globalConfig?.no_banner ?? false;
+
+  const loginShell =
+    profileEntry?.login_shell ?? config.login_shell ?? globalConfig?.login_shell ?? true;
+
+  const processManagement =
+    profileEntry?.process_management ??
+    config.process_management ??
+    globalConfig?.process_management ??
+    true;
+
   return {
     name: selectedName,
     command,
@@ -420,6 +541,10 @@ export function resolveProfile(
     sourcePath,
     configDir,
     description: profileEntry?.description,
+    no_color: noColor,
+    no_banner: noBanner,
+    login_shell: loginShell,
+    process_management: processManagement,
   };
 }
 

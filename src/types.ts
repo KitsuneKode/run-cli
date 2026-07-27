@@ -7,6 +7,10 @@ export interface ProfileConfig {
   env?: EnvMap;
   description?: string;
   alias?: string | string[];
+  login_shell?: boolean;
+  no_color?: boolean;
+  no_banner?: boolean;
+  process_management?: boolean;
 }
 
 export interface RunConfigFile {
@@ -16,6 +20,10 @@ export interface RunConfigFile {
   env?: EnvMap;
   defaultProfile?: string;
   profiles?: Record<string, Partial<ProfileConfig>>;
+  login_shell?: boolean;
+  no_color?: boolean;
+  no_banner?: boolean;
+  process_management?: boolean;
 }
 
 export interface ResolvedProfile {
@@ -26,6 +34,10 @@ export interface ResolvedProfile {
   sourcePath: string;
   configDir: string;
   description?: string;
+  login_shell: boolean;
+  no_color: boolean;
+  no_banner: boolean;
+  process_management: boolean;
 }
 
 export interface ResolvedCommand {
@@ -40,6 +52,10 @@ export interface GlobalConfig {
   editor?: string;
   cache: boolean;
   detection: "suggest";
+  login_shell?: boolean;
+  no_color?: boolean;
+  no_banner?: boolean;
+  process_management?: boolean;
 }
 
 export interface ResolvedConfig {

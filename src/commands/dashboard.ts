@@ -2,6 +2,7 @@ import { sleep } from "../fs.ts";
 import { renderManagedDashboard } from "../managed-process-view.ts";
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { Command } from "./types.ts";
 
 export const dashboardCommand: Command = {
@@ -15,7 +16,8 @@ export const dashboardCommand: Command = {
       description: "Keep running and refreshing dashboard",
     },
   },
-  execute: async (_ctx, parsed) => {
+  execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const registry = new ProcessRegistry();
     const renderAndPrint = async () => {
       const snapshots = await registry.withLock(() =>

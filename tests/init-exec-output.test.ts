@@ -27,6 +27,10 @@ function testProfile(command: string): ResolvedProfile {
     env: {},
     sourcePath: "test",
     configDir: process.cwd(),
+    login_shell: true,
+    no_color: false,
+    no_banner: false,
+    process_management: true,
   };
 }
 

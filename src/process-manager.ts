@@ -112,7 +112,10 @@ async function startManagedProcessCore(options: {
   const stdoutFd = openSync(logPath, "a");
   const stderrFd = openSync(logPath, "a");
 
-  const child = spawn(shell, ["-lc", `exec ${commandLine.shellCommand}`], {
+  const shellArgs = options.profile.login_shell
+    ? ["-lc", `exec ${commandLine.shellCommand}`]
+    : ["-c", `exec ${commandLine.shellCommand}`];
+  const child = spawn(shell, shellArgs, {
     cwd: options.profile.cwd,
     detached: true,
     stdio: ["ignore", stdoutFd, stderrFd],
@@ -217,6 +220,38 @@ export async function restartManagedProcess(
 
     await terminateProcess(existingProcess.pid);
 
+    let loginShell = true;
+    let noColor = false;
+    let noBanner = false;
+    let processManagement = true;
+
+    try {
+      const { pathExists, readTextFile } = await import("./fs.ts");
+      if (await pathExists(existingProcess.configPath)) {
+        const { parseProjectConfig, resolveProfile } = await import("./config.ts");
+        const raw = await readTextFile(existingProcess.configPath);
+        const parsed = parseProjectConfig(raw, existingProcess.configPath);
+        const resolved = resolveProfile(
+          {
+            config: parsed,
+            sourcePath: existingProcess.configPath,
+            configDir: existingProcess.projectRoot,
+            cacheHit: false,
+            isLegacyPath: false,
+          },
+          existingProcess.profile,
+          undefined,
+          options.globalConfig,
+        );
+        loginShell = resolved.login_shell;
+        noColor = resolved.no_color;
+        noBanner = resolved.no_banner;
+        processManagement = resolved.process_management;
+      }
+    } catch {
+      // fallback to defaults
+    }
+
     const profile: ResolvedProfile = {
       name: existingProcess.profile,
       command: existingProcess.baseCommand,
@@ -224,6 +259,10 @@ export async function restartManagedProcess(
       env: existingProcess.env,
       sourcePath: existingProcess.configPath,
       configDir: existingProcess.projectRoot,
+      login_shell: loginShell,
+      no_color: noColor,
+      no_banner: noBanner,
+      process_management: processManagement,
     };
 
     return await startManagedProcessCore({

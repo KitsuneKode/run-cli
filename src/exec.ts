@@ -22,7 +22,10 @@ export async function runResolvedProfile(
   const commandLine = resolveCommandLine(profile, options.args ?? []);
 
   return await new Promise<number>((resolve, reject) => {
-    const child = spawn(shell, ["-lc", commandLine.shellCommand], {
+    const shellArgs = profile.login_shell
+      ? ["-lc", commandLine.shellCommand]
+      : ["-c", commandLine.shellCommand];
+    const child = spawn(shell, shellArgs, {
       cwd: profile.cwd,
       stdio: "inherit",
       env: {

@@ -1,6 +1,7 @@
 import { info } from "../output.ts";
 import { signalManagedProcess } from "../process-manager.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { Command } from "./types.ts";
 
 export const stopCommand: Command = {
@@ -10,7 +11,8 @@ export const stopCommand: Command = {
   flags: {
     all: { type: "boolean", description: "Stop all running managed processes" },
   },
-  execute: async (_ctx, parsed) => {
+  execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const identifier = parsed.positionals[1];
     const all = parsed.all;
 

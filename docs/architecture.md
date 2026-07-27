@@ -111,6 +111,8 @@ Commands execute through the selected POSIX shell:
 - then `$SHELL`
 - then `/bin/sh`
 
+By default, the shell runs as a login shell using the `-lc` flag to mirror standard user profiles. However, this behavior can be disabled via `login_shell = false`, which spawns commands using `-c` to avoid loading interactive startup scripts (preventing terminal/TUI interface corruption).
+
 Execution uses inherited stdio, forwards common termination signals, and returns the child exit code unchanged.
 
 `src/command-line.ts` is the single source of truth for:
@@ -126,6 +128,7 @@ Managed processes are intentionally local and lightweight:
 
 - only processes started by `run up` are tracked
 - metadata is stored in XDG state paths
+- projects or profiles can completely opt out of background process tracking by setting `process_management = false` in `.run.toml`, disabling `run up`, `run ps`, `run dashboard`, and other process lifecycle commands.
 - memory and port details are sampled on demand instead of continuously
 - `run ps` and `run dashboard` skip memory and port probing to stay cheap; `run ports` and `run inspect` opt into that extra work
 - `run ps --details` is the opt-in richer overview path when the user explicitly wants more than the cheap default

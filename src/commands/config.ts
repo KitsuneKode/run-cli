@@ -80,7 +80,8 @@ async function openInEditor(targetPath: string, globalConfig: GlobalConfig): Pro
   const command = `${editor} ${shellQuote(targetPath)}`;
 
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(shell, ["-lc", command], {
+    const shellArgs = (globalConfig.login_shell ?? true) ? ["-lc", command] : ["-c", command];
+    const child = spawn(shell, shellArgs, {
       stdio: "inherit",
     });
 

@@ -24,7 +24,7 @@ export function resolveCommandLine(
 }
 
 export function renderMinimalBanner(commandLine: ResolvedCommand): string {
-  return `${bold(blue("run"))} ${dim("→")} ${commandLine.shellCommand}`;
+  return `${bold(blue("run"))} ${dim("->")} ${commandLine.shellCommand}`;
 }
 
 export function renderVerboseBanner(input: {

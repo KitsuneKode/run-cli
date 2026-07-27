@@ -311,6 +311,49 @@ describe("listShortcutNames", () => {
     const names = listShortcutNames(config);
     expect(names.some((n) => n.includes(" "))).toBe(false);
   });
+
+  test("resolves login_shell, no_color, no_banner, and process_management configuration", async () => {
+    const projectRoot = await createTempProject();
+    const cacheStore = new CacheStore(path.join(projectRoot, ".cache", "run-cache.json"));
+
+    await writeTextFile(
+      path.join(projectRoot, CONFIG_FILE_NAME),
+      [
+        "version = 1",
+        "login_shell = false",
+        "no_color = true",
+        "process_management = false",
+        'command = "bun run index.ts"',
+        "",
+        "[profiles.dev]",
+        'command = "bun run dev.ts"',
+        "no_banner = true",
+        "login_shell = true",
+      ].join("\n"),
+    );
+
+    const resolvedConfig = await resolveProjectConfig({
+      cwd: projectRoot,
+      useCache: true,
+      cacheStore,
+    });
+
+    if (!resolvedConfig) {
+      throw new Error("Expected a resolved config.");
+    }
+
+    const defaultProfile = resolveProfile(resolvedConfig, undefined);
+    expect(defaultProfile.login_shell).toBe(false);
+    expect(defaultProfile.no_color).toBe(true);
+    expect(defaultProfile.no_banner).toBe(false);
+    expect(defaultProfile.process_management).toBe(false);
+
+    const devProfile = resolveProfile(resolvedConfig, "dev");
+    expect(devProfile.login_shell).toBe(true); // overridden in profile
+    expect(devProfile.no_color).toBe(true); // inherited from project level
+    expect(devProfile.no_banner).toBe(true); // set in profile
+    expect(devProfile.process_management).toBe(false); // inherited from project level
+  });
 });
 
 describe("parseToml", () => {

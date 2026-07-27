@@ -1,5 +1,6 @@
 import { info } from "../output.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { Command } from "./types.ts";
 
 export const portsCommand: Command = {
@@ -9,7 +10,8 @@ export const portsCommand: Command = {
   flags: {
     json: { type: "boolean", description: "Format output as JSON" },
   },
-  execute: async (_ctx, parsed) => {
+  execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const registry = new ProcessRegistry();
     const snapshots = await registry.withLock(() =>
       registry.listSnapshots({

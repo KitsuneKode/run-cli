@@ -35,6 +35,10 @@ Fields:
 - `cwd`: optional path relative to the config file directory
 - `env`: optional table of string, number, or boolean values
 - `default_profile`: optional profile name used by plain `run`
+- `login_shell`: optional boolean (default `true`). Set to `false` to spawn commands using non-login flags (`-c`), bypassing interactive/login shell rc files and preventing TUI/color corruption.
+- `no_color`: optional boolean (default `false`). Set to `true` to disable all colored ANSI terminal output.
+- `no_banner`: optional boolean (default `false`). Set to `true` to suppress execution/startup banners.
+- `process_management`: optional boolean (default `true`). Set to `false` to disable tracking background/managed processes and block `run up`/`run dashboard` etc.
 
 ### Named profiles
 
@@ -96,6 +100,10 @@ Fields:
 - `editor`: command used by `run config edit`
 - `cache`: enables or disables cache reads and writes
 - `detection`: currently only `"suggest"`
+- `login_shell`: preferred default for login vs non-login shell execution
+- `no_color`: disable ANSI colors globally
+- `no_banner`: hide startup/execution banners globally
+- `process_management`: disable process tracking and dashboard commands globally
 
 Global config never defines project commands.
 

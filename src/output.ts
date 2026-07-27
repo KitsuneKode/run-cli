@@ -1,5 +1,12 @@
+let forceNoColor = false;
+
+export function setForceNoColor(value: boolean): void {
+  forceNoColor = value;
+}
+
 function isColorEnabled(): boolean {
   return (
+    !forceNoColor &&
     Boolean(process.stdout.isTTY) &&
     process.env.NO_COLOR === undefined &&
     process.env.TERM !== "dumb"

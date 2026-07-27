@@ -65,7 +65,7 @@ describe("direct cli run()", () => {
           await run(["--cwd", projectRoot]);
         });
 
-        expect(result.stdout).toContain("run → echo legacy-run");
+        expect(result.stdout).toContain("run -> echo legacy-run");
         expect(result.stdout).toContain("Rename it to .run.toml");
       },
     );
@@ -299,5 +299,52 @@ describe("direct cli run()", () => {
     } finally {
       process.stdout.isTTY = originalIsTTY;
     }
+  });
+
+  test("respects no_banner and blocks process management when disabled", async () => {
+    const projectRoot = await createTempDir("run-cli-disable-features-");
+    const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
+
+    await writeTextFile(
+      configPath,
+      [
+        "version = 1",
+        "no_banner = true",
+        "process_management = false",
+        'command = "echo test-run"',
+      ].join("\n"),
+    );
+
+    await withEnv(
+      {
+        XDG_CACHE_HOME: path.join(projectRoot, ".cache"),
+        XDG_CONFIG_HOME: path.join(projectRoot, ".config"),
+        XDG_STATE_HOME: path.join(projectRoot, ".state"),
+      },
+      async () => {
+        const runResult = await captureConsole(async () => {
+          await run(["--cwd", projectRoot]);
+        });
+        expect(runResult.stdout).not.toContain("run ->");
+
+        const upResult = await captureConsole(async () => {
+          await run(["up", "--cwd", projectRoot]);
+        });
+        expect(upResult.exitCode).toBe(1);
+        expect(upResult.stderr).toContain("Process management is disabled by configuration");
+
+        const psResult = await captureConsole(async () => {
+          await run(["ps", "--cwd", projectRoot]);
+        });
+        expect(psResult.exitCode).toBe(1);
+        expect(psResult.stderr).toContain("Process management is disabled by configuration");
+
+        const dashboardResult = await captureConsole(async () => {
+          await run(["dashboard", "--cwd", projectRoot]);
+        });
+        expect(dashboardResult.exitCode).toBe(1);
+        expect(dashboardResult.stderr).toContain("Process management is disabled by configuration");
+      },
+    );
   });
 });

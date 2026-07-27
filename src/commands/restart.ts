@@ -1,6 +1,7 @@
 import { info } from "../output.ts";
 import { restartManagedProcess } from "../process-manager.ts";
 import { ProcessRegistry } from "../process-registry.ts";
+import { checkProcessManagementEnabled } from "../process-validation.ts";
 import type { Command } from "./types.ts";
 
 export const restartCommand: Command = {
@@ -11,6 +12,7 @@ export const restartCommand: Command = {
     all: { type: "boolean", description: "Restart all managed processes" },
   },
   execute: async (ctx, parsed) => {
+    await checkProcessManagementEnabled(ctx);
     const identifier = parsed.positionals[1];
     const all = parsed.all;
 
