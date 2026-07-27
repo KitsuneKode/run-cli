@@ -1,6 +1,6 @@
 {
   "name": "@kitsunekode/run-cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A lightweight Bun-native CLI for running projects through local profiles and smart detection.",
   "keywords": [
     "bun",

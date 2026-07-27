@@ -1,5 +1,11 @@
 # @kitsunekode/run-cli
 
+## 0.3.0
+
+### Minor Changes
+
+- 4394733: Add `login_shell`, `no_color`, `no_banner`, and `process_management` configuration support. This allows running TUI applications cleanly by bypassing interactive login shell scripts, turning off ANSI colors, suppressing startup/status banners, and opting out of background process management and tracking.
+
 ## 0.2.0
 
 ### Minor Changes
